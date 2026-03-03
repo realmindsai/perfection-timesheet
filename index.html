@@ -11,8 +11,6 @@
       --green: #4CAF50;
       --green-light: #E8F5E9;
       --orange: #FF9800;
-      --orange-light: #FFF3E0;
-      --red: #F44336;
       --grey: #F5F5F5;
       --grey-mid: #9E9E9E;
       --text: #333;
@@ -63,7 +61,7 @@
       margin-bottom: 4px;
     }
 
-    select, input[type="date"], input[type="time"], textarea {
+    select, input[type="date"], textarea {
       width: 100%;
       padding: 10px 12px;
       border: 1.5px solid #DDD;
@@ -86,7 +84,21 @@
 
     .field { margin-bottom: 12px; }
 
+    /* ── Time picker: hour : min side by side ── */
     .time-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .time-pick { display: flex; align-items: center; gap: 4px; }
+    .time-pick select {
+      width: auto;
+      flex: 1;
+      padding: 10px 8px;
+      font-size: 16px;
+      text-align: center;
+    }
+    .time-pick .colon {
+      font-size: 18px;
+      font-weight: 700;
+      color: #999;
+    }
 
     .day-card {
       background: white;
@@ -213,16 +225,6 @@
       font-size: 14px;
       display: none;
     }
-
-    .config-banner {
-      background: #FFF3E0;
-      color: #E65100;
-      padding: 12px 16px;
-      border-radius: var(--radius);
-      margin-bottom: 12px;
-      font-size: 14px;
-      text-align: center;
-    }
   </style>
 </head>
 <body>
@@ -233,19 +235,14 @@
   </div>
 
   <div class="container">
-    <div id="configBanner" class="config-banner" style="display:none;">
-      SCRIPT_URL not configured. See setup instructions.
-    </div>
-
     <div id="errorBanner" class="error-banner"></div>
 
     <div id="formView">
       <div class="section">
         <div class="field">
           <label for="staffName">Your Name</label>
-          <select id="staffName" required>
-            <option value="">Loading names...</option>
-          </select>
+          <input type="text" id="staffName" placeholder="Type your name" required
+                 style="width:100%;padding:10px 12px;border:1.5px solid #DDD;border-radius:6px;font-size:16px;">
         </div>
         <div class="field">
           <label for="weekEnding">Week Ending (Sunday)</label>
@@ -302,9 +299,12 @@
     </div>
   </div>
 
+  <!-- Hidden iframe for form submission -->
+  <iframe name="submitFrame" id="submitFrame" style="display:none;"></iframe>
+
 <script>
   // ══════════════════════════════════════════════════
-  // CONFIGURATION — Paste your Apps Script URL here
+  // CONFIGURATION
   // ══════════════════════════════════════════════════
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwSDR1H2vsaBJSOKD-sFUgXa8mNXwRDdNCXKJa6MKAFQ_FlRFB_0yFhm31T4JHDD3FQ/exec";
   // ══════════════════════════════════════════════════
@@ -319,6 +319,20 @@
     { key: "sun", name: "Sunday" }
   ];
 
+  // Hours for dropdown: 4am to 11pm
+  const HOURS = [];
+  for (let h = 4; h <= 23; h++) {
+    const ampm = h < 12 ? "am" : "pm";
+    const display = h <= 12 ? h : h - 12;
+    HOURS.push({ value: h, label: display + ampm });
+  }
+  const MINS = [
+    { value: "00", label: "00" },
+    { value: "15", label: "15" },
+    { value: "30", label: "30" },
+    { value: "45", label: "45" }
+  ];
+
   function showError(msg) {
     const banner = document.getElementById("errorBanner");
     banner.textContent = msg;
@@ -326,13 +340,27 @@
     setTimeout(() => { banner.style.display = "none"; }, 8000);
   }
 
-  // ── Build day cards ──
+  function buildTimeSelect(id, options, placeholder) {
+    let html = `<select id="${id}" onchange="onTimeChange(this)">`;
+    html += `<option value="">${placeholder}</option>`;
+    options.forEach(o => { html += `<option value="${o.value}">${o.label}</option>`; });
+    html += `</select>`;
+    return html;
+  }
+
+  // ── Build day cards with dropdown time pickers ──
   function buildDayCards() {
     const container = document.getElementById("dayCards");
     DAYS.forEach((day, i) => {
       const card = document.createElement("div");
       card.className = "day-card";
       card.id = "card-" + day.key;
+
+      const startHr = buildTimeSelect(day.key + "StartH", HOURS, "Hr");
+      const startMn = buildTimeSelect(day.key + "StartM", MINS, "Min");
+      const endHr = buildTimeSelect(day.key + "EndH", HOURS, "Hr");
+      const endMn = buildTimeSelect(day.key + "EndM", MINS, "Min");
+
       card.innerHTML = `
         <div class="day-header" onclick="toggleDay('${day.key}')">
           <span class="day-name">${day.name}</span>
@@ -342,11 +370,11 @@
           <div class="time-row">
             <div>
               <label>Start</label>
-              <input type="time" id="${day.key}Start" onchange="calcDay('${day.key}')">
+              <div class="time-pick">${startHr}<span class="colon">:</span>${startMn}</div>
             </div>
             <div>
               <label>End</label>
-              <input type="time" id="${day.key}End" onchange="calcDay('${day.key}')">
+              <div class="time-pick">${endHr}<span class="colon">:</span>${endMn}</div>
             </div>
           </div>
           <div class="calc-row" id="calc-${day.key}" style="display:none;">
@@ -371,7 +399,6 @@
       `;
       container.appendChild(card);
     });
-    // Open Monday by default
     document.getElementById("body-mon").classList.add("open");
   }
 
@@ -379,24 +406,46 @@
     document.getElementById("body-" + key).classList.toggle("open");
   }
 
+  // Figure out which day a time select belongs to and recalc
+  function onTimeChange(el) {
+    const id = el.id; // e.g. "monStartH"
+    const dayKey = id.replace(/(Start|End)(H|M)$/, "");
+    calcDay(dayKey);
+  }
+
+  // Get time as "HH:MM" from hour+min dropdowns, or "" if incomplete
+  function getTime(dayKey, which) {
+    const h = document.getElementById(dayKey + which + "H").value;
+    const m = document.getElementById(dayKey + which + "M").value;
+    if (h === "" || m === "") return "";
+    return String(h).padStart(2, "0") + ":" + m;
+  }
+
   function calcDay(key) {
-    const start = document.getElementById(key + "Start").value;
-    const end = document.getElementById(key + "End").value;
+    const start = getTime(key, "Start");
+    const end = getTime(key, "End");
     const calcRow = document.getElementById("calc-" + key);
     const card = document.getElementById("card-" + key);
     const summary = document.getElementById("summary-" + key);
 
+    // Check if partially filled
+    const sh = document.getElementById(key + "StartH").value;
+    const sm = document.getElementById(key + "StartM").value;
+    const eh = document.getElementById(key + "EndH").value;
+    const em = document.getElementById(key + "EndM").value;
+    const anyFilled = sh || sm || eh || em;
+
     if (!start || !end) {
       calcRow.style.display = "none";
       card.classList.remove("has-data");
-      summary.textContent = start || end ? "Incomplete" : "Tap to add";
+      summary.textContent = anyFilled ? "Incomplete" : "Tap to add";
       updateTotals();
       return;
     }
 
-    const [sh, sm] = start.split(":").map(Number);
-    const [eh, em] = end.split(":").map(Number);
-    let raw = (eh * 60 + em - sh * 60 - sm) / 60;
+    const [sHr, sMin] = start.split(":").map(Number);
+    const [eHr, eMin] = end.split(":").map(Number);
+    let raw = (eHr * 60 + eMin - sHr * 60 - sMin) / 60;
     if (raw < 0) raw += 24;
 
     let worked = raw;
@@ -420,8 +469,8 @@
     let totalRaw = 0, totalBreaks = 0, totalOrd = 0, totalOT = 0, hasData = false;
 
     DAYS.forEach(day => {
-      const start = document.getElementById(day.key + "Start").value;
-      const end = document.getElementById(day.key + "End").value;
+      const start = getTime(day.key, "Start");
+      const end = getTime(day.key, "End");
       if (!start || !end) return;
 
       hasData = true;
@@ -444,18 +493,17 @@
     document.getElementById("totalsSection").style.display = hasData ? "block" : "none";
   }
 
-  // ── Submit via fetch to Apps Script API ──
+  // ── Submit via hidden form + iframe (bulletproof, no CORS issues) ──
   function handleSubmit() {
-    const staffName = document.getElementById("staffName").value;
+    const staffName = document.getElementById("staffName").value.trim();
     const weekEnding = document.getElementById("weekEnding").value;
 
-    if (!staffName) { alert("Please select your name."); return; }
+    if (!staffName) { alert("Please enter your name."); return; }
     if (!weekEnding) { alert("Please select the week ending date."); return; }
 
     let hasDay = false;
     DAYS.forEach(day => {
-      if (document.getElementById(day.key + "Start").value &&
-          document.getElementById(day.key + "End").value) hasDay = true;
+      if (getTime(day.key, "Start") && getTime(day.key, "End")) hasDay = true;
     });
     if (!hasDay) { alert("Please enter times for at least one day."); return; }
 
@@ -463,39 +511,59 @@
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span>Submitting...';
 
+    // Build form data
     const formData = {
       staffName: staffName,
       weekEnding: weekEnding,
       generalNotes: document.getElementById("generalNotes").value
     };
     DAYS.forEach(day => {
-      formData[day.key + "Start"] = document.getElementById(day.key + "Start").value;
-      formData[day.key + "End"] = document.getElementById(day.key + "End").value;
+      formData[day.key + "Start"] = getTime(day.key, "Start");
+      formData[day.key + "End"] = getTime(day.key, "End");
       formData[day.key + "Notes"] = document.getElementById(day.key + "Notes").value;
     });
 
-    // POST to Apps Script — use no-cors to avoid redirect CORS issues
-    // The data gets through; we show success optimistically
-    fetch(SCRIPT_URL, {
-      method: "POST",
-      mode: "no-cors",
-      headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify(formData)
-    })
-    .then(() => {
-      // no-cors gives opaque response, so we assume success if no network error
+    // Create a real HTML form targeting hidden iframe — bypasses CORS entirely
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = SCRIPT_URL;
+    form.target = "submitFrame";
+    form.style.display = "none";
+
+    const input = document.createElement("input");
+    input.type = "hidden";
+    input.name = "data";
+    input.value = JSON.stringify(formData);
+    form.appendChild(input);
+
+    document.body.appendChild(form);
+
+    // Listen for iframe load (means Apps Script responded)
+    const iframe = document.getElementById("submitFrame");
+    iframe.onload = function() {
+      document.body.removeChild(form);
       onSuccess({
         name: staffName,
         weekEnding: weekEnding,
         totalOrdinary: parseFloat(document.getElementById("totalOrd").textContent),
         totalOvertime: parseFloat(document.getElementById("totalOT").textContent)
       });
-    })
-    .catch(err => {
-      showError("Network error — check your connection and try again.");
-      btn.disabled = false;
-      btn.textContent = "Submit Timesheet";
-    });
+    };
+
+    form.submit();
+
+    // Fallback timeout in case iframe onload doesn't fire
+    setTimeout(() => {
+      if (btn.disabled) {
+        try { document.body.removeChild(form); } catch(e) {}
+        onSuccess({
+          name: staffName,
+          weekEnding: weekEnding,
+          totalOrdinary: parseFloat(document.getElementById("totalOrd").textContent),
+          totalOvertime: parseFloat(document.getElementById("totalOT").textContent)
+        });
+      }
+    }, 6000);
   }
 
   function onSuccess(result) {
@@ -511,11 +579,14 @@
   function resetForm() {
     document.getElementById("formView").style.display = "block";
     document.getElementById("successView").style.display = "none";
+    document.getElementById("staffName").value = "";
     document.getElementById("weekEnding").value = "";
     document.getElementById("generalNotes").value = "";
     DAYS.forEach(day => {
-      document.getElementById(day.key + "Start").value = "";
-      document.getElementById(day.key + "End").value = "";
+      document.getElementById(day.key + "StartH").value = "";
+      document.getElementById(day.key + "StartM").value = "";
+      document.getElementById(day.key + "EndH").value = "";
+      document.getElementById(day.key + "EndM").value = "";
       document.getElementById(day.key + "Notes").value = "";
       document.getElementById("calc-" + day.key).style.display = "none";
       document.getElementById("card-" + day.key).classList.remove("has-data");
@@ -528,47 +599,8 @@
     window.scrollTo(0, 0);
   }
 
-  // ── Load staff names from Apps Script API ──
-  function loadNames() {
-    if (SCRIPT_URL.includes("PASTE_YOUR")) {
-      document.getElementById("configBanner").style.display = "block";
-      document.getElementById("staffName").innerHTML =
-        '<option value="">Setup needed — see instructions</option>';
-      return;
-    }
-
-    fetch(SCRIPT_URL + "?action=getNames")
-      .then(r => r.json())
-      .then(data => {
-        const sel = document.getElementById("staffName");
-        sel.innerHTML = '<option value="">Select your name...</option>';
-        if (data.names && data.names.length > 0) {
-          data.names.forEach(name => {
-            const opt = document.createElement("option");
-            opt.value = name;
-            opt.textContent = name;
-            sel.appendChild(opt);
-          });
-        } else {
-          sel.innerHTML = '<option value="">No staff names found — ask Paul</option>';
-        }
-      })
-      .catch(err => {
-        // Fallback: let user type their name manually
-        const sel = document.getElementById("staffName");
-        const parent = sel.parentNode;
-        const input = document.createElement("input");
-        input.type = "text";
-        input.id = "staffName";
-        input.placeholder = "Type your name";
-        input.required = true;
-        parent.replaceChild(input, sel);
-      });
-  }
-
   // ── Init ──
   buildDayCards();
-  loadNames();
 </script>
 </body>
 </html>
