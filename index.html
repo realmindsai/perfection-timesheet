@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Perfection Services — Weekly Timesheet</title>
+  <style>
+    :root {
+      --purple: #6B3FA0;
+      --purple-light: #E8DFF5;
+      --green: #4CAF50;
+      --green-light: #E8F5E9;
+      --orange: #FF9800;
+      --orange-light: #FFF3E0;
+      --red: #F44336;
+      --grey: #F5F5F5;
+      --grey-mid: #9E9E9E;
+      --text: #333;
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #FAFAFA;
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .header {
+      background: var(--purple);
+      color: white;
+      padding: 20px 16px;
+      text-align: center;
+    }
+    .header h1 { font-size: 20px; font-weight: 600; }
+    .header p { font-size: 13px; opacity: 0.85; margin-top: 4px; }
+
+    .container { max-width: 600px; margin: 0 auto; padding: 16px; }
+
+    .section {
+      background: white;
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .section-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--purple);
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--purple-light);
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: #555;
+      margin-bottom: 4px;
+    }
+
+    select, input[type="date"], input[type="time"], textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1.5px solid #DDD;
+      border-radius: 6px;
+      font-size: 16px;
+      background: white;
+      color: var(--text);
+    }
+    select {
+      background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' stroke-width='2' fill='none'/%3E%3C/svg%3E") no-repeat right 12px center;
+      padding-right: 32px;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--purple);
+      outline: none;
+      box-shadow: 0 0 0 3px var(--purple-light);
+    }
+
+    .field { margin-bottom: 12px; }
+
+    .time-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    .day-card {
+      background: white;
+      border-radius: var(--radius);
+      margin-bottom: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+    .day-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .day-header:active { background: var(--grey); }
+    .day-name { font-size: 15px; font-weight: 600; color: var(--purple); }
+    .day-summary { font-size: 13px; color: var(--grey-mid); }
+    .day-body { padding: 0 16px 16px; display: none; }
+    .day-body.open { display: block; }
+    .day-card.has-data .day-summary { color: var(--green); font-weight: 500; }
+    .day-notes { margin-top: 8px; }
+    .day-notes input {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1.5px solid #DDD;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    .calc-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 6px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed #DDD;
+    }
+    .calc-box {
+      background: var(--green-light);
+      border-radius: 6px;
+      padding: 6px 8px;
+      text-align: center;
+    }
+    .calc-box .calc-label { font-size: 10px; color: #666; text-transform: uppercase; }
+    .calc-box .calc-value { font-size: 16px; font-weight: 600; color: var(--green); }
+    .calc-box.overtime .calc-value { color: var(--orange); }
+
+    .totals-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .total-card {
+      background: var(--grey);
+      border-radius: 6px;
+      padding: 12px;
+      text-align: center;
+    }
+    .total-card .total-label { font-size: 11px; color: #666; text-transform: uppercase; }
+    .total-card .total-value { font-size: 22px; font-weight: 700; color: var(--purple); margin-top: 2px; }
+    .total-card.overtime .total-value { color: var(--orange); }
+
+    textarea { min-height: 60px; resize: vertical; font-size: 14px; }
+
+    .submit-btn {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      background: var(--purple);
+      color: white;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+    .submit-btn:active { background: #5A2E8F; }
+    .submit-btn:disabled { background: #CCC; cursor: not-allowed; }
+
+    .success-msg { display: none; text-align: center; padding: 40px 20px; }
+    .success-msg .tick { font-size: 48px; color: var(--green); }
+    .success-msg h2 { color: var(--green); margin: 12px 0 8px; }
+    .success-msg p { color: #666; }
+    .success-msg .summary {
+      background: var(--green-light);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin: 16px 0;
+      text-align: left;
+    }
+    .success-msg .summary dt { font-size: 12px; color: #666; text-transform: uppercase; }
+    .success-msg .summary dd { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+    .another-btn {
+      display: inline-block;
+      padding: 12px 24px;
+      background: var(--purple);
+      color: white;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 12px;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 18px; height: 18px;
+      border: 3px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-banner {
+      background: #FFEBEE;
+      color: #C62828;
+      padding: 12px 16px;
+      border-radius: var(--radius);
+      margin-bottom: 12px;
+      font-size: 14px;
+      display: none;
+    }
+
+    .config-banner {
+      background: #FFF3E0;
+      color: #E65100;
+      padding: 12px 16px;
+      border-radius: var(--radius);
+      margin-bottom: 12px;
+      font-size: 14px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>Weekly Timesheet</h1>
+    <p>Perfection Services</p>
+  </div>
+
+  <div class="container">
+    <div id="configBanner" class="config-banner" style="display:none;">
+      SCRIPT_URL not configured. See setup instructions.
+    </div>
+
+    <div id="errorBanner" class="error-banner"></div>
+
+    <div id="formView">
+      <div class="section">
+        <div class="field">
+          <label for="staffName">Your Name</label>
+          <select id="staffName" required>
+            <option value="">Loading names...</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="weekEnding">Week Ending (Sunday)</label>
+          <input type="date" id="weekEnding" required>
+        </div>
+      </div>
+
+      <div id="dayCards"></div>
+
+      <div class="section" id="totalsSection" style="display:none;">
+        <div class="section-title">Weekly Totals</div>
+        <div class="totals-grid">
+          <div class="total-card">
+            <div class="total-label">Ordinary</div>
+            <div class="total-value" id="totalOrd">0.00</div>
+          </div>
+          <div class="total-card overtime">
+            <div class="total-label">Overtime</div>
+            <div class="total-value" id="totalOT">0.00</div>
+          </div>
+          <div class="total-card">
+            <div class="total-label">Raw Hours</div>
+            <div class="total-value" id="totalRaw">0.00</div>
+          </div>
+          <div class="total-card">
+            <div class="total-label">Break Deductions</div>
+            <div class="total-value" id="totalBreaks">0.00</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="field">
+          <label for="generalNotes">Anything else? (optional)</label>
+          <textarea id="generalNotes" placeholder="Travel, equipment, issues..."></textarea>
+        </div>
+      </div>
+
+      <button class="submit-btn" id="submitBtn" onclick="handleSubmit()">Submit Timesheet</button>
+    </div>
+
+    <div class="success-msg" id="successView">
+      <div class="tick">&#10003;</div>
+      <h2>Timesheet Submitted</h2>
+      <p id="successName"></p>
+      <div class="summary">
+        <dl>
+          <dt>Week Ending</dt><dd id="successWeek"></dd>
+          <dt>Ordinary Hours</dt><dd id="successOrd"></dd>
+          <dt>Overtime Hours</dt><dd id="successOT"></dd>
+        </dl>
+      </div>
+      <button class="another-btn" onclick="resetForm()">Submit Another</button>
+    </div>
+  </div>
+
+<script>
+  // ══════════════════════════════════════════════════
+  // CONFIGURATION — Paste your Apps Script URL here
+  // ══════════════════════════════════════════════════
+  const SCRIPT_URL = "PASTE_YOUR_APPS_SCRIPT_DEPLOYMENT_URL_HERE";
+  // ══════════════════════════════════════════════════
+
+  const DAYS = [
+    { key: "mon", name: "Monday" },
+    { key: "tue", name: "Tuesday" },
+    { key: "wed", name: "Wednesday" },
+    { key: "thu", name: "Thursday" },
+    { key: "fri", name: "Friday" },
+    { key: "sat", name: "Saturday" },
+    { key: "sun", name: "Sunday" }
+  ];
+
+  function showError(msg) {
+    const banner = document.getElementById("errorBanner");
+    banner.textContent = msg;
+    banner.style.display = "block";
+    setTimeout(() => { banner.style.display = "none"; }, 8000);
+  }
+
+  // ── Build day cards ──
+  function buildDayCards() {
+    const container = document.getElementById("dayCards");
+    DAYS.forEach((day, i) => {
+      const card = document.createElement("div");
+      card.className = "day-card";
+      card.id = "card-" + day.key;
+      card.innerHTML = `
+        <div class="day-header" onclick="toggleDay('${day.key}')">
+          <span class="day-name">${day.name}</span>
+          <span class="day-summary" id="summary-${day.key}">Tap to add</span>
+        </div>
+        <div class="day-body" id="body-${day.key}">
+          <div class="time-row">
+            <div>
+              <label>Start</label>
+              <input type="time" id="${day.key}Start" onchange="calcDay('${day.key}')">
+            </div>
+            <div>
+              <label>End</label>
+              <input type="time" id="${day.key}End" onchange="calcDay('${day.key}')">
+            </div>
+          </div>
+          <div class="calc-row" id="calc-${day.key}" style="display:none;">
+            <div class="calc-box">
+              <div class="calc-label">Raw</div>
+              <div class="calc-value" id="raw-${day.key}">-</div>
+            </div>
+            <div class="calc-box">
+              <div class="calc-label">Ordinary</div>
+              <div class="calc-value" id="ord-${day.key}">-</div>
+            </div>
+            <div class="calc-box overtime">
+              <div class="calc-label">Overtime</div>
+              <div class="calc-value" id="ot-${day.key}">-</div>
+            </div>
+          </div>
+          <div class="day-notes">
+            <label>Notes</label>
+            <input type="text" id="${day.key}Notes" placeholder="Optional">
+          </div>
+        </div>
+      `;
+      container.appendChild(card);
+    });
+    // Open Monday by default
+    document.getElementById("body-mon").classList.add("open");
+  }
+
+  function toggleDay(key) {
+    document.getElementById("body-" + key).classList.toggle("open");
+  }
+
+  function calcDay(key) {
+    const start = document.getElementById(key + "Start").value;
+    const end = document.getElementById(key + "End").value;
+    const calcRow = document.getElementById("calc-" + key);
+    const card = document.getElementById("card-" + key);
+    const summary = document.getElementById("summary-" + key);
+
+    if (!start || !end) {
+      calcRow.style.display = "none";
+      card.classList.remove("has-data");
+      summary.textContent = start || end ? "Incomplete" : "Tap to add";
+      updateTotals();
+      return;
+    }
+
+    const [sh, sm] = start.split(":").map(Number);
+    const [eh, em] = end.split(":").map(Number);
+    let raw = (eh * 60 + em - sh * 60 - sm) / 60;
+    if (raw < 0) raw += 24;
+
+    let worked = raw;
+    if (raw > 5) worked = raw - 0.5;
+
+    let ordinary, overtime;
+    if (worked > 8.5) { ordinary = 8.5; overtime = worked - 8.5; }
+    else { ordinary = worked; overtime = 0; }
+
+    document.getElementById("raw-" + key).textContent = raw.toFixed(2);
+    document.getElementById("ord-" + key).textContent = ordinary.toFixed(2);
+    document.getElementById("ot-" + key).textContent = overtime.toFixed(2);
+    calcRow.style.display = "grid";
+
+    card.classList.add("has-data");
+    summary.textContent = ordinary.toFixed(1) + "h" + (overtime > 0 ? " + " + overtime.toFixed(1) + "h OT" : "");
+    updateTotals();
+  }
+
+  function updateTotals() {
+    let totalRaw = 0, totalBreaks = 0, totalOrd = 0, totalOT = 0, hasData = false;
+
+    DAYS.forEach(day => {
+      const start = document.getElementById(day.key + "Start").value;
+      const end = document.getElementById(day.key + "End").value;
+      if (!start || !end) return;
+
+      hasData = true;
+      const [sh, sm] = start.split(":").map(Number);
+      const [eh, em] = end.split(":").map(Number);
+      let raw = (eh * 60 + em - sh * 60 - sm) / 60;
+      if (raw < 0) raw += 24;
+
+      totalRaw += raw;
+      let worked = raw;
+      if (raw > 5) { worked = raw - 0.5; totalBreaks += 0.5; }
+      if (worked > 8.5) { totalOrd += 8.5; totalOT += worked - 8.5; }
+      else { totalOrd += worked; }
+    });
+
+    document.getElementById("totalRaw").textContent = totalRaw.toFixed(2);
+    document.getElementById("totalBreaks").textContent = totalBreaks.toFixed(2);
+    document.getElementById("totalOrd").textContent = totalOrd.toFixed(2);
+    document.getElementById("totalOT").textContent = totalOT.toFixed(2);
+    document.getElementById("totalsSection").style.display = hasData ? "block" : "none";
+  }
+
+  // ── Submit via fetch to Apps Script API ──
+  function handleSubmit() {
+    const staffName = document.getElementById("staffName").value;
+    const weekEnding = document.getElementById("weekEnding").value;
+
+    if (!staffName) { alert("Please select your name."); return; }
+    if (!weekEnding) { alert("Please select the week ending date."); return; }
+
+    let hasDay = false;
+    DAYS.forEach(day => {
+      if (document.getElementById(day.key + "Start").value &&
+          document.getElementById(day.key + "End").value) hasDay = true;
+    });
+    if (!hasDay) { alert("Please enter times for at least one day."); return; }
+
+    const btn = document.getElementById("submitBtn");
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Submitting...';
+
+    const formData = {
+      staffName: staffName,
+      weekEnding: weekEnding,
+      generalNotes: document.getElementById("generalNotes").value
+    };
+    DAYS.forEach(day => {
+      formData[day.key + "Start"] = document.getElementById(day.key + "Start").value;
+      formData[day.key + "End"] = document.getElementById(day.key + "End").value;
+      formData[day.key + "Notes"] = document.getElementById(day.key + "Notes").value;
+    });
+
+    // POST to Apps Script — use no-cors to avoid redirect CORS issues
+    // The data gets through; we show success optimistically
+    fetch(SCRIPT_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify(formData)
+    })
+    .then(() => {
+      // no-cors gives opaque response, so we assume success if no network error
+      onSuccess({
+        name: staffName,
+        weekEnding: weekEnding,
+        totalOrdinary: parseFloat(document.getElementById("totalOrd").textContent),
+        totalOvertime: parseFloat(document.getElementById("totalOT").textContent)
+      });
+    })
+    .catch(err => {
+      showError("Network error — check your connection and try again.");
+      btn.disabled = false;
+      btn.textContent = "Submit Timesheet";
+    });
+  }
+
+  function onSuccess(result) {
+    document.getElementById("formView").style.display = "none";
+    document.getElementById("successView").style.display = "block";
+    document.getElementById("successName").textContent = result.name;
+    document.getElementById("successWeek").textContent = result.weekEnding;
+    document.getElementById("successOrd").textContent = result.totalOrdinary.toFixed(2) + " hrs";
+    document.getElementById("successOT").textContent = result.totalOvertime.toFixed(2) + " hrs";
+    window.scrollTo(0, 0);
+  }
+
+  function resetForm() {
+    document.getElementById("formView").style.display = "block";
+    document.getElementById("successView").style.display = "none";
+    document.getElementById("weekEnding").value = "";
+    document.getElementById("generalNotes").value = "";
+    DAYS.forEach(day => {
+      document.getElementById(day.key + "Start").value = "";
+      document.getElementById(day.key + "End").value = "";
+      document.getElementById(day.key + "Notes").value = "";
+      document.getElementById("calc-" + day.key).style.display = "none";
+      document.getElementById("card-" + day.key).classList.remove("has-data");
+      document.getElementById("summary-" + day.key).textContent = "Tap to add";
+    });
+    document.getElementById("totalsSection").style.display = "none";
+    const btn = document.getElementById("submitBtn");
+    btn.disabled = false;
+    btn.textContent = "Submit Timesheet";
+    window.scrollTo(0, 0);
+  }
+
+  // ── Load staff names from Apps Script API ──
+  function loadNames() {
+    if (SCRIPT_URL.includes("PASTE_YOUR")) {
+      document.getElementById("configBanner").style.display = "block";
+      document.getElementById("staffName").innerHTML =
+        '<option value="">Setup needed — see instructions</option>';
+      return;
+    }
+
+    fetch(SCRIPT_URL + "?action=getNames")
+      .then(r => r.json())
+      .then(data => {
+        const sel = document.getElementById("staffName");
+        sel.innerHTML = '<option value="">Select your name...</option>';
+        if (data.names && data.names.length > 0) {
+          data.names.forEach(name => {
+            const opt = document.createElement("option");
+            opt.value = name;
+            opt.textContent = name;
+            sel.appendChild(opt);
+          });
+        } else {
+          sel.innerHTML = '<option value="">No staff names found — ask Paul</option>';
+        }
+      })
+      .catch(err => {
+        // Fallback: let user type their name manually
+        const sel = document.getElementById("staffName");
+        const parent = sel.parentNode;
+        const input = document.createElement("input");
+        input.type = "text";
+        input.id = "staffName";
+        input.placeholder = "Type your name";
+        input.required = true;
+        parent.replaceChild(input, sel);
+      });
+  }
+
+  // ── Init ──
+  buildDayCards();
+  loadNames();
+</script>
+</body>
+</html>
