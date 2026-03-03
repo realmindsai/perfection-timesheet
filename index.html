@@ -84,7 +84,6 @@
 
     .field { margin-bottom: 12px; }
 
-    /* ── Time picker: hour : min side by side ── */
     .time-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .time-pick { display: flex; align-items: center; gap: 4px; }
     .time-pick select {
@@ -99,6 +98,10 @@
       font-weight: 700;
       color: #999;
     }
+    .time-pick select.error {
+      border-color: #F44336;
+      background-color: #FFEBEE;
+    }
 
     .day-card {
       background: white;
@@ -106,6 +109,9 @@
       margin-bottom: 8px;
       box-shadow: 0 1px 3px rgba(0,0,0,0.08);
       overflow: hidden;
+    }
+    .day-card.has-error {
+      box-shadow: 0 0 0 2px #F44336;
     }
     .day-header {
       display: flex;
@@ -122,6 +128,7 @@
     .day-body { padding: 0 16px 16px; display: none; }
     .day-body.open { display: block; }
     .day-card.has-data .day-summary { color: var(--green); font-weight: 500; }
+    .day-card.has-error .day-summary { color: #F44336; font-weight: 500; }
     .day-notes { margin-top: 8px; }
     .day-notes input {
       width: 100%;
@@ -162,12 +169,10 @@
 
     textarea { min-height: 60px; resize: vertical; font-size: 14px; }
 
-    .submit-btn {
+    .submit-btn, .confirm-btn, .back-btn {
       display: block;
       width: 100%;
       padding: 14px;
-      background: var(--purple);
-      color: white;
       border: none;
       border-radius: var(--radius);
       font-size: 16px;
@@ -175,9 +180,52 @@
       cursor: pointer;
       margin-top: 8px;
     }
+    .submit-btn { background: var(--purple); color: white; }
     .submit-btn:active { background: #5A2E8F; }
     .submit-btn:disabled { background: #CCC; cursor: not-allowed; }
+    .confirm-btn { background: var(--green); color: white; }
+    .confirm-btn:active { background: #388E3C; }
+    .confirm-btn:disabled { background: #CCC; cursor: not-allowed; }
+    .back-btn { background: white; color: var(--purple); border: 2px solid var(--purple); margin-top: 8px; }
+    .back-btn:active { background: var(--purple-light); }
 
+    /* ── Preview ── */
+    .preview-card {
+      background: white;
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .preview-card h3 {
+      font-size: 15px;
+      color: var(--purple);
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--purple-light);
+    }
+    .preview-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #EEE;
+      font-size: 14px;
+    }
+    .preview-row:last-child { border-bottom: none; }
+    .preview-row .pr-label { color: #666; }
+    .preview-row .pr-value { font-weight: 600; }
+    .preview-row .pr-value.overtime { color: var(--orange); }
+    .preview-totals {
+      background: var(--purple-light);
+      border-radius: 6px;
+      padding: 12px;
+      margin-top: 12px;
+    }
+    .preview-totals .preview-row { border-bottom-color: rgba(107,63,160,0.15); }
+    .preview-totals .pr-label { color: var(--purple); font-weight: 500; }
+    .preview-totals .pr-value { color: var(--purple); }
+
+    /* ── Success ── */
     .success-msg { display: none; text-align: center; padding: 40px 20px; }
     .success-msg .tick { font-size: 48px; color: var(--green); }
     .success-msg h2 { color: var(--green); margin: 12px 0 8px; }
@@ -237,6 +285,7 @@
   <div class="container">
     <div id="errorBanner" class="error-banner"></div>
 
+    <!-- ── FORM VIEW ── -->
     <div id="formView">
       <div class="section">
         <div class="field">
@@ -281,9 +330,48 @@
         </div>
       </div>
 
-      <button class="submit-btn" id="submitBtn" onclick="handleSubmit()">Submit Timesheet</button>
+      <button class="submit-btn" id="reviewBtn" onclick="showPreview()">Review &amp; Submit</button>
     </div>
 
+    <!-- ── PREVIEW VIEW ── -->
+    <div id="previewView" style="display:none;">
+      <div class="preview-card">
+        <h3>Check Your Timesheet</h3>
+        <div class="preview-row">
+          <span class="pr-label">Name</span>
+          <span class="pr-value" id="prevName"></span>
+        </div>
+        <div class="preview-row">
+          <span class="pr-label">Week Ending</span>
+          <span class="pr-value" id="prevWeek"></span>
+        </div>
+      </div>
+
+      <div class="preview-card" id="prevDays"></div>
+
+      <div class="preview-card">
+        <h3>Totals</h3>
+        <div class="preview-totals">
+          <div class="preview-row">
+            <span class="pr-label">Ordinary Hours</span>
+            <span class="pr-value" id="prevOrd"></span>
+          </div>
+          <div class="preview-row">
+            <span class="pr-label">Overtime Hours</span>
+            <span class="pr-value overtime" id="prevOT"></span>
+          </div>
+          <div class="preview-row">
+            <span class="pr-label">Break Deductions</span>
+            <span class="pr-value" id="prevBreaks"></span>
+          </div>
+        </div>
+      </div>
+
+      <button class="confirm-btn" id="confirmBtn" onclick="handleSubmit()">Confirm &amp; Submit</button>
+      <button class="back-btn" onclick="hidePreview()">Go Back &amp; Edit</button>
+    </div>
+
+    <!-- ── SUCCESS VIEW ── -->
     <div class="success-msg" id="successView">
       <div class="tick">&#10003;</div>
       <h2>Timesheet Submitted</h2>
@@ -299,15 +387,10 @@
     </div>
   </div>
 
-  <!-- Hidden iframe for form submission -->
   <iframe name="submitFrame" id="submitFrame" style="display:none;"></iframe>
 
 <script>
-  // ══════════════════════════════════════════════════
-  // CONFIGURATION
-  // ══════════════════════════════════════════════════
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwSDR1H2vsaBJSOKD-sFUgXa8mNXwRDdNCXKJa6MKAFQ_FlRFB_0yFhm31T4JHDD3FQ/exec";
-  // ══════════════════════════════════════════════════
 
   const DAYS = [
     { key: "mon", name: "Monday" },
@@ -319,11 +402,10 @@
     { key: "sun", name: "Sunday" }
   ];
 
-  // Hours for dropdown: 4am to 11pm
   const HOURS = [];
   for (let h = 4; h <= 23; h++) {
     const ampm = h < 12 ? "am" : "pm";
-    const display = h <= 12 ? h : h - 12;
+    const display = h === 0 ? 12 : h <= 12 ? h : h - 12;
     HOURS.push({ value: h, label: display + ampm });
   }
   const MINS = [
@@ -337,6 +419,7 @@
     const banner = document.getElementById("errorBanner");
     banner.textContent = msg;
     banner.style.display = "block";
+    window.scrollTo(0, 0);
     setTimeout(() => { banner.style.display = "none"; }, 8000);
   }
 
@@ -348,7 +431,6 @@
     return html;
   }
 
-  // ── Build day cards with dropdown time pickers ──
   function buildDayCards() {
     const container = document.getElementById("dayCards");
     DAYS.forEach((day, i) => {
@@ -406,19 +488,58 @@
     document.getElementById("body-" + key).classList.toggle("open");
   }
 
-  // Figure out which day a time select belongs to and recalc
   function onTimeChange(el) {
-    const id = el.id; // e.g. "monStartH"
+    const id = el.id;
     const dayKey = id.replace(/(Start|End)(H|M)$/, "");
+    clearDayError(dayKey);
     calcDay(dayKey);
   }
 
-  // Get time as "HH:MM" from hour+min dropdowns, or "" if incomplete
   function getTime(dayKey, which) {
     const h = document.getElementById(dayKey + which + "H").value;
     const m = document.getElementById(dayKey + which + "M").value;
     if (h === "" || m === "") return "";
     return String(h).padStart(2, "0") + ":" + m;
+  }
+
+  // Check if a day has ANY fields filled
+  function dayHasAnyInput(key) {
+    return document.getElementById(key + "StartH").value !== "" ||
+           document.getElementById(key + "StartM").value !== "" ||
+           document.getElementById(key + "EndH").value !== "" ||
+           document.getElementById(key + "EndM").value !== "";
+  }
+
+  // Check if a day is fully complete (both start and end)
+  function dayIsComplete(key) {
+    return getTime(key, "Start") !== "" && getTime(key, "End") !== "";
+  }
+
+  // Check if a day is completely empty
+  function dayIsEmpty(key) {
+    return !dayHasAnyInput(key);
+  }
+
+  function clearDayError(key) {
+    const card = document.getElementById("card-" + key);
+    card.classList.remove("has-error");
+    ["StartH", "StartM", "EndH", "EndM"].forEach(suffix => {
+      document.getElementById(key + suffix).classList.remove("error");
+    });
+  }
+
+  function markDayError(key) {
+    const card = document.getElementById("card-" + key);
+    card.classList.add("has-error");
+    // Highlight empty selects
+    ["StartH", "StartM", "EndH", "EndM"].forEach(suffix => {
+      const el = document.getElementById(key + suffix);
+      if (el.value === "") el.classList.add("error");
+    });
+    // Open the day so they can see the issue
+    document.getElementById("body-" + key).classList.add("open");
+    const summary = document.getElementById("summary-" + key);
+    summary.textContent = "Incomplete — fill in all fields";
   }
 
   function calcDay(key) {
@@ -428,17 +549,10 @@
     const card = document.getElementById("card-" + key);
     const summary = document.getElementById("summary-" + key);
 
-    // Check if partially filled
-    const sh = document.getElementById(key + "StartH").value;
-    const sm = document.getElementById(key + "StartM").value;
-    const eh = document.getElementById(key + "EndH").value;
-    const em = document.getElementById(key + "EndM").value;
-    const anyFilled = sh || sm || eh || em;
-
     if (!start || !end) {
       calcRow.style.display = "none";
       card.classList.remove("has-data");
-      summary.textContent = anyFilled ? "Incomplete" : "Tap to add";
+      summary.textContent = dayHasAnyInput(key) ? "Incomplete" : "Tap to add";
       updateTotals();
       return;
     }
@@ -460,6 +574,7 @@
     document.getElementById("ot-" + key).textContent = overtime.toFixed(2);
     calcRow.style.display = "grid";
 
+    card.classList.remove("has-error");
     card.classList.add("has-data");
     summary.textContent = ordinary.toFixed(1) + "h" + (overtime > 0 ? " + " + overtime.toFixed(1) + "h OT" : "");
     updateTotals();
@@ -493,25 +608,112 @@
     document.getElementById("totalsSection").style.display = hasData ? "block" : "none";
   }
 
-  // ── Submit via hidden form + iframe (bulletproof, no CORS issues) ──
-  function handleSubmit() {
+  // ── Validate before preview ──
+  function validate() {
     const staffName = document.getElementById("staffName").value.trim();
     const weekEnding = document.getElementById("weekEnding").value;
 
-    if (!staffName) { alert("Please enter your name."); return; }
-    if (!weekEnding) { alert("Please select the week ending date."); return; }
+    if (!staffName) { showError("Please enter your name."); return false; }
+    if (!weekEnding) { showError("Please select the week ending date."); return false; }
 
-    let hasDay = false;
+    // Check for incomplete days (some fields filled, but not all four)
+    let hasError = false;
+    let hasComplete = false;
+    const errorDays = [];
+
     DAYS.forEach(day => {
-      if (getTime(day.key, "Start") && getTime(day.key, "End")) hasDay = true;
+      clearDayError(day.key);
+      if (dayIsEmpty(day.key)) return; // blank day is fine
+      if (dayIsComplete(day.key)) { hasComplete = true; return; } // complete day is fine
+      // Partially filled — error
+      hasError = true;
+      errorDays.push(day.name);
+      markDayError(day.key);
     });
-    if (!hasDay) { alert("Please enter times for at least one day."); return; }
 
-    const btn = document.getElementById("submitBtn");
+    if (hasError) {
+      showError(errorDays.join(", ") + " — please fill in all time fields or clear the day.");
+      return false;
+    }
+
+    if (!hasComplete) {
+      showError("Please enter times for at least one day.");
+      return false;
+    }
+
+    return true;
+  }
+
+  // ── Preview step ──
+  function showPreview() {
+    if (!validate()) return;
+
+    const name = document.getElementById("staffName").value.trim();
+    const week = document.getElementById("weekEnding").value;
+
+    document.getElementById("prevName").textContent = name;
+    // Format date nicely
+    const d = new Date(week + "T00:00:00");
+    const formatted = d.toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+    document.getElementById("prevWeek").textContent = formatted;
+
+    // Build day rows
+    const container = document.getElementById("prevDays");
+    container.innerHTML = "<h3>Hours by Day</h3>";
+
+    DAYS.forEach(day => {
+      if (!dayIsComplete(day.key)) return;
+
+      const start = getTime(day.key, "Start");
+      const end = getTime(day.key, "End");
+      const [sH, sM] = start.split(":").map(Number);
+      const [eH, eM] = end.split(":").map(Number);
+      let raw = (eH * 60 + eM - sH * 60 - sM) / 60;
+      if (raw < 0) raw += 24;
+      let worked = raw > 5 ? raw - 0.5 : raw;
+      let ord = worked > 8.5 ? 8.5 : worked;
+      let ot = worked > 8.5 ? worked - 8.5 : 0;
+
+      const fmtTime = (h, m) => {
+        const ampm = h < 12 ? "am" : "pm";
+        const dh = h === 0 ? 12 : h <= 12 ? h : h - 12;
+        return dh + ":" + String(m).padStart(2, "0") + ampm;
+      };
+
+      let detail = fmtTime(sH, sM) + " — " + fmtTime(eH, eM) + "  |  " + ord.toFixed(1) + "h";
+      if (ot > 0) detail += " + " + ot.toFixed(1) + "h OT";
+
+      container.innerHTML += `
+        <div class="preview-row">
+          <span class="pr-label">${day.name}</span>
+          <span class="pr-value">${detail}</span>
+        </div>`;
+    });
+
+    document.getElementById("prevOrd").textContent = document.getElementById("totalOrd").textContent + " hrs";
+    document.getElementById("prevOT").textContent = document.getElementById("totalOT").textContent + " hrs";
+    document.getElementById("prevBreaks").textContent = document.getElementById("totalBreaks").textContent + " hrs";
+
+    document.getElementById("formView").style.display = "none";
+    document.getElementById("previewView").style.display = "block";
+    window.scrollTo(0, 0);
+  }
+
+  function hidePreview() {
+    document.getElementById("previewView").style.display = "none";
+    document.getElementById("formView").style.display = "block";
+    window.scrollTo(0, 0);
+  }
+
+  // ── Submit via hidden form + iframe ──
+  function handleSubmit() {
+    const btn = document.getElementById("confirmBtn");
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span>Submitting...';
 
-    // Build form data
+    const staffName = document.getElementById("staffName").value.trim();
+    const weekEnding = document.getElementById("weekEnding").value;
+
     const formData = {
       staffName: staffName,
       weekEnding: weekEnding,
@@ -523,7 +725,6 @@
       formData[day.key + "Notes"] = document.getElementById(day.key + "Notes").value;
     });
 
-    // Create a real HTML form targeting hidden iframe — bypasses CORS entirely
     const form = document.createElement("form");
     form.method = "POST";
     form.action = SCRIPT_URL;
@@ -535,10 +736,8 @@
     input.name = "data";
     input.value = JSON.stringify(formData);
     form.appendChild(input);
-
     document.body.appendChild(form);
 
-    // Listen for iframe load (means Apps Script responded)
     const iframe = document.getElementById("submitFrame");
     iframe.onload = function() {
       document.body.removeChild(form);
@@ -552,7 +751,6 @@
 
     form.submit();
 
-    // Fallback timeout in case iframe onload doesn't fire
     setTimeout(() => {
       if (btn.disabled) {
         try { document.body.removeChild(form); } catch(e) {}
@@ -567,7 +765,7 @@
   }
 
   function onSuccess(result) {
-    document.getElementById("formView").style.display = "none";
+    document.getElementById("previewView").style.display = "none";
     document.getElementById("successView").style.display = "block";
     document.getElementById("successName").textContent = result.name;
     document.getElementById("successWeek").textContent = result.weekEnding;
@@ -579,6 +777,7 @@
   function resetForm() {
     document.getElementById("formView").style.display = "block";
     document.getElementById("successView").style.display = "none";
+    document.getElementById("previewView").style.display = "none";
     document.getElementById("staffName").value = "";
     document.getElementById("weekEnding").value = "";
     document.getElementById("generalNotes").value = "";
@@ -590,16 +789,16 @@
       document.getElementById(day.key + "Notes").value = "";
       document.getElementById("calc-" + day.key).style.display = "none";
       document.getElementById("card-" + day.key).classList.remove("has-data");
+      document.getElementById("card-" + day.key).classList.remove("has-error");
       document.getElementById("summary-" + day.key).textContent = "Tap to add";
     });
     document.getElementById("totalsSection").style.display = "none";
-    const btn = document.getElementById("submitBtn");
+    const btn = document.getElementById("confirmBtn");
     btn.disabled = false;
-    btn.textContent = "Submit Timesheet";
+    btn.textContent = "Confirm & Submit";
     window.scrollTo(0, 0);
   }
 
-  // ── Init ──
   buildDayCards();
 </script>
 </body>
