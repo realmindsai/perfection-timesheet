@@ -413,8 +413,12 @@
       <div class="section">
         <div class="field">
           <label for="staffName">Your Name</label>
-          <input type="text" id="staffName" placeholder="Type your name" required
+          <select id="staffName" required style="display:none;">
+            <option value="">Loading names...</option>
+          </select>
+          <input type="text" id="staffNameFallback" placeholder="Type your name"
                  style="width:100%;padding:10px 12px;border:1.5px solid #DDD;border-radius:6px;font-size:16px;">
+          <p id="nameError" style="display:none;color:#C62828;font-size:12px;margin-top:4px;">Could not load staff list. Type your name instead.</p>
         </div>
         <div class="field">
           <label for="weekEnding">Week Ending (Sunday)</label>
@@ -525,7 +529,7 @@
         <div class="correction-fields" id="correctionFields">
           <div class="field">
             <label for="corrWeekEnding">Week ending to correct</label>
-            <input type="date" id="corrWeekEnding">
+            <input type="date" id="corrWeekEnding" onchange="this.value = this.value ? snapToSunday(this.value) : ''">
           </div>
           <div class="field">
             <label for="corrDay">Day to correct</label>
@@ -563,6 +567,12 @@
         <div class="field">
           <label for="generalNotes">General notes (optional)</label>
           <textarea id="generalNotes" placeholder="Travel, equipment, issues..."></textarea>
+        </div>
+        <div class="field">
+          <label for="copyEmail">Send me a copy (optional)</label>
+          <input type="email" id="copyEmail" placeholder="your@email.com"
+                 style="width:100%;padding:10px 12px;border:1.5px solid #DDD;border-radius:6px;font-size:14px;">
+          <p style="font-size:11px;color:#888;margin:4px 0 0;">You'll get a confirmation email with your submitted hours.</p>
         </div>
       </div>
 
@@ -946,10 +956,24 @@
     }
   }
 
+  // Snap a date string to the nearest Sunday (forward if not already Sunday)
+  function snapToSunday(dateStr) {
+    var d = new Date(dateStr + "T00:00:00");
+    var dow = d.getDay(); // 0=Sun, 1=Mon, ...
+    if (dow !== 0) {
+      d.setDate(d.getDate() + (7 - dow));
+    }
+    return d.toISOString().split("T")[0];
+  }
+
   function onWeekEndingChange() {
+    var el = document.getElementById("weekEnding");
+    if (el.value) {
+      el.value = snapToSunday(el.value);
+    }
     // If week 2 is active, auto-update week 2 ending
     if (week2Active) {
-      var w1End = document.getElementById("weekEnding").value;
+      var w1End = el.value;
       if (w1End) {
         var d = new Date(w1End + "T00:00:00");
         d.setDate(d.getDate() + 7);
@@ -1012,10 +1036,10 @@
 
   // ── Validate before preview ──
   function validate() {
-    var staffName = document.getElementById("staffName").value.trim();
+    var staffName = getStaffName();
     var weekEnding = document.getElementById("weekEnding").value;
 
-    if (!staffName) { showError("Please enter your name."); return false; }
+    if (!staffName) { showError("Please select or enter your name."); return false; }
     if (!weekEnding) { showError("Please select the week ending date."); return false; }
 
     // Validate week 1 days
@@ -1125,7 +1149,7 @@
   function showPreview() {
     if (!validate()) return;
 
-    var name = document.getElementById("staffName").value.trim();
+    var name = getStaffName();
     var week = document.getElementById("weekEnding").value;
 
     document.getElementById("prevName").textContent = name;
@@ -1168,8 +1192,9 @@
     // Notes preview
     var unavail = document.getElementById("unavailableDays").value.trim();
     var notes = document.getElementById("generalNotes").value.trim();
+    var copyEmail = document.getElementById("copyEmail").value.trim();
     var notesSection = document.getElementById("prevNotesSection");
-    if (unavail || notes) {
+    if (unavail || notes || copyEmail) {
       notesSection.style.display = "block";
       var html = "";
       if (unavail) {
@@ -1177,6 +1202,9 @@
       }
       if (notes) {
         html += '<div class="preview-row"><span class="pr-label">Notes</span><span class="pr-value">' + notes + '</span></div>';
+      }
+      if (copyEmail) {
+        html += '<div class="preview-row"><span class="pr-label">Copy to</span><span class="pr-value">' + copyEmail + '</span></div>';
       }
       document.getElementById("prevNotesDetails").innerHTML = html;
     } else {
@@ -1213,7 +1241,7 @@
   }
 
   function buildPayload() {
-    var staffName = document.getElementById("staffName").value.trim();
+    var staffName = getStaffName();
     var weekEnding = document.getElementById("weekEnding").value;
 
     var payload = {
@@ -1222,7 +1250,8 @@
       weeks: [buildWeekPayload("w1", weekEnding)],
       correction: null,
       unavailableDays: document.getElementById("unavailableDays").value.trim() || "",
-      generalNotes: document.getElementById("generalNotes").value.trim() || ""
+      generalNotes: document.getElementById("generalNotes").value.trim() || "",
+      copyEmail: document.getElementById("copyEmail").value.trim() || ""
     };
 
     if (week2Active) {
@@ -1354,10 +1383,11 @@
     document.getElementById("successView").style.display = "none";
     document.getElementById("previewView").style.display = "none";
     document.getElementById("warningView").style.display = "none";
-    document.getElementById("staffName").value = "";
+    resetStaffName();
     document.getElementById("weekEnding").value = "";
     document.getElementById("unavailableDays").value = "";
     document.getElementById("generalNotes").value = "";
+    document.getElementById("copyEmail").value = "";
 
     // Clear week 1
     clearWeekData("w1");
@@ -1388,10 +1418,70 @@
     window.scrollTo(0, 0);
   }
 
+  // ── Staff name helpers ──
+
+  var staffNamesLoaded = false;
+
+  function getStaffName() {
+    if (staffNamesLoaded) {
+      return document.getElementById("staffName").value;
+    }
+    return document.getElementById("staffNameFallback").value.trim();
+  }
+
+  function resetStaffName() {
+    if (staffNamesLoaded) {
+      document.getElementById("staffName").selectedIndex = 0;
+    } else {
+      document.getElementById("staffNameFallback").value = "";
+    }
+  }
+
+  // JSONP callback — called by the <script> tag loaded from Apps Script
+  window.onStaffNamesLoaded = function(data) {
+    if (!data.success || !data.names || data.names.length === 0) return;
+
+    var select = document.getElementById("staffName");
+    select.innerHTML = '<option value="">Select your name</option>';
+    data.names.forEach(function(name) {
+      var opt = document.createElement("option");
+      opt.value = name;
+      opt.textContent = name;
+      select.appendChild(opt);
+    });
+
+    // Show dropdown, hide text input
+    select.style.display = "";
+    document.getElementById("staffNameFallback").style.display = "none";
+    staffNamesLoaded = true;
+  };
+
+  function loadStaffNames() {
+    var script = document.createElement("script");
+    script.src = SCRIPT_URL + "?action=getNames&callback=onStaffNamesLoaded";
+    script.onerror = function() {
+      // JSONP failed — keep the text input visible
+      document.getElementById("staffName").style.display = "none";
+      document.getElementById("staffNameFallback").style.display = "";
+      document.getElementById("nameError").style.display = "block";
+    };
+    document.body.appendChild(script);
+
+    // Timeout fallback — if JSONP doesn't respond in 5 seconds, show text input
+    setTimeout(function() {
+      if (!staffNamesLoaded) {
+        document.getElementById("staffName").style.display = "none";
+        document.getElementById("staffNameFallback").style.display = "";
+        document.getElementById("nameError").style.display = "block";
+      }
+    }, 5000);
+  }
+
   // ── Init ──
   buildDayCards("w1", "w1_dayCards");
   buildDayCards("w2", "w2_dayCards");
   buildCorrectionPickers();
+  loadStaffNames();
 </script>
 </body>
 </html>

@@ -25,11 +25,21 @@ const DAYS_TITLE = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
  */
 function doGet(e) {
   const action = (e && e.parameter && e.parameter.action) || "getNames";
+  const callback = (e && e.parameter && e.parameter.callback) || "";
 
   if (action === "getNames") {
     const names = getStaffNames();
+    const json = JSON.stringify({ success: true, names: names });
+
+    // JSONP support — allows cross-origin loading via <script> tag
+    if (callback) {
+      return ContentService
+        .createTextOutput(callback + "(" + json + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+
     return ContentService
-      .createTextOutput(JSON.stringify({ success: true, names: names }))
+      .createTextOutput(json)
       .setMimeType(ContentService.MimeType.JSON);
   }
 
@@ -194,7 +204,7 @@ function processV2(formData) {
 
   // Build summary from first week for response
   const primary = results[0] || {};
-  return {
+  const response = {
     success: true,
     name: formData.staffName,
     weeksProcessed: results.length,
@@ -203,6 +213,62 @@ function processV2(formData) {
     totalOrdinary: primary.totalOrdinary,
     totalOvertime: primary.totalOvertime
   };
+
+  // Send confirmation email if requested
+  if (formData.copyEmail) {
+    try {
+      sendConfirmationEmail(formData, results);
+    } catch (emailErr) {
+      // Don't fail the submission if email fails
+      response.emailError = emailErr.message;
+    }
+  }
+
+  return response;
+}
+
+/**
+ * Sends a confirmation email to the staff member with their submitted hours
+ */
+function sendConfirmationEmail(formData, weekResults) {
+  const email = formData.copyEmail;
+  if (!email) return;
+
+  const name = formData.staffName;
+  let body = "Hi " + name + ",\n\nYour timesheet has been received.\n\n";
+
+  for (let i = 0; i < weekResults.length; i++) {
+    const w = weekResults[i];
+    body += "Week ending " + w.weekEnding + ":\n";
+    body += "  Ordinary hours: " + (w.totalOrdinary || 0).toFixed(2) + "\n";
+    body += "  Overtime hours: " + (w.totalOvertime || 0).toFixed(2) + "\n";
+    if (w.highRiskHours > 0) {
+      body += "  High risk hours: " + w.highRiskHours + "\n";
+    }
+    if (w.isEstimate) {
+      body += "  (includes estimates)\n";
+    }
+    body += "\n";
+  }
+
+  if (formData.correction) {
+    body += "Correction submitted for week ending " + formData.correction.weekEnding + " (" + formData.correction.day + ")\n\n";
+  }
+
+  if (formData.unavailableDays) {
+    body += "Upcoming unavailable: " + formData.unavailableDays + "\n";
+  }
+  if (formData.generalNotes) {
+    body += "Notes: " + formData.generalNotes + "\n";
+  }
+
+  body += "\nThis is an automated confirmation from Perfection Services Timesheets.";
+
+  MailApp.sendEmail({
+    to: email,
+    subject: "Timesheet received — " + name + " (w/e " + (weekResults[0] || {}).weekEnding + ")",
+    body: body
+  });
 }
 
 /**
@@ -259,7 +325,9 @@ function processWeekSubmission(ss, sheet, staffName, weekData, unavailableDays, 
   return {
     weekEnding: weekData.weekEnding,
     totalOrdinary: totalOrdinary,
-    totalOvertime: totalOvertime
+    totalOvertime: totalOvertime,
+    highRiskHours: highRiskHours,
+    isEstimate: weekData.isEstimate || false
   };
 }
 
