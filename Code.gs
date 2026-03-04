@@ -31,16 +31,11 @@ function doGet(e) {
     const names = getStaffNames();
     const json = JSON.stringify({ success: true, names: names });
 
-    // JSONP support — allows cross-origin loading via <script> tag
-    if (callback) {
-      return ContentService
-        .createTextOutput(callback + "(" + json + ")")
-        .setMimeType(ContentService.MimeType.JAVASCRIPT);
-    }
-
-    return ContentService
-      .createTextOutput(json)
-      .setMimeType(ContentService.MimeType.JSON);
+    // Return HTML page that posts names to parent window via postMessage
+    // This works on mobile because iframes handle the Apps Script redirect chain correctly
+    const html = '<html><body><script>parent.postMessage(' + json + ', "*");<\/script></body></html>';
+    return HtmlService.createHtmlOutput(html)
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
 
   return ContentService

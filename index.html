@@ -1437,8 +1437,8 @@
     }
   }
 
-  // JSONP callback — called by the <script> tag loaded from Apps Script
-  window.onStaffNamesLoaded = function(data) {
+  // Receives staff names from hidden iframe via postMessage
+  function onStaffNamesLoaded(data) {
     if (!data.success || !data.names || data.names.length === 0) return;
 
     var select = document.getElementById("staffName");
@@ -1454,20 +1454,23 @@
     select.style.display = "";
     document.getElementById("staffNameFallback").style.display = "none";
     staffNamesLoaded = true;
-  };
+  }
 
   function loadStaffNames() {
-    var script = document.createElement("script");
-    script.src = SCRIPT_URL + "?action=getNames&callback=onStaffNamesLoaded";
-    script.onerror = function() {
-      // JSONP failed — keep the text input visible
-      document.getElementById("staffName").style.display = "none";
-      document.getElementById("staffNameFallback").style.display = "";
-      document.getElementById("nameError").style.display = "block";
-    };
-    document.body.appendChild(script);
+    // Listen for postMessage from the iframe (cross-origin safe)
+    window.addEventListener("message", function(event) {
+      if (event.data && event.data.success && event.data.names) {
+        onStaffNamesLoaded(event.data);
+      }
+    });
 
-    // Timeout fallback — if JSONP doesn't respond in 10 seconds, show text input
+    // Load names via hidden iframe — handles Apps Script redirect chain on mobile
+    var iframe = document.createElement("iframe");
+    iframe.style.display = "none";
+    iframe.src = SCRIPT_URL + "?action=getNames";
+    document.body.appendChild(iframe);
+
+    // Timeout fallback — if names don't arrive in 10 seconds, show text input
     setTimeout(function() {
       if (!staffNamesLoaded) {
         document.getElementById("staffName").style.display = "none";
