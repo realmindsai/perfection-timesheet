@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Perfection Services — Weekly Timesheet</title>
+  <title>Perfection Services — Submit Your Timesheet</title>
   <style>
     :root {
       --purple: #6B3FA0;
@@ -401,7 +401,7 @@
 <body>
 
   <div class="header">
-    <h1>Weekly Timesheet</h1>
+    <h1>Submit Your Timesheet</h1>
     <p>Perfection Services</p>
   </div>
 
@@ -420,6 +420,10 @@
                  style="width:100%;padding:10px 12px;border:1.5px solid #DDD;border-radius:6px;font-size:16px;">
           <p id="nameError" style="display:none;color:#888;font-size:12px;margin-top:4px;">Staff list loading slowly — just type your name.</p>
         </div>
+      </div>
+
+      <div class="section-title">Week 1</div>
+      <div class="section">
         <div class="field">
           <label for="weekEnding">Week Ending (Sunday)</label>
           <input type="date" id="weekEnding" required onchange="onWeekEndingChange()">
@@ -473,9 +477,10 @@
 
       <!-- Week 2 Wrapper -->
       <div class="week2-wrapper" id="week2Wrapper">
+        <div class="section-title">Week 2</div>
         <div class="section">
           <div class="field">
-            <label for="w2_weekEnding">Week 2 Ending (Sunday)</label>
+            <label for="w2_weekEnding">Week Ending (Sunday)</label>
             <input type="date" id="w2_weekEnding">
           </div>
         </div>
@@ -1485,6 +1490,16 @@
   buildDayCards("w2", "w2_dayCards");
   buildCorrectionPickers();
   loadStaffNames();
+
+  // Default week ending to next Sunday (or today if already Sunday)
+  (function() {
+    var today = new Date();
+    var dow = today.getDay(); // 0=Sun
+    var daysUntilSun = dow === 0 ? 0 : 7 - dow;
+    var nextSun = new Date(today);
+    nextSun.setDate(today.getDate() + daysUntilSun);
+    document.getElementById("weekEnding").value = nextSun.toISOString().split("T")[0];
+  })();
 </script>
 </body>
 </html>
