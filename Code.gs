@@ -147,6 +147,7 @@ function processV1(formData) {
 
   sheet.appendRow(row);
   updatePaySummary(ss);
+  updateFortnightSummary(ss);
 
   return {
     success: true,
