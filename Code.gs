@@ -430,13 +430,15 @@ function updatePaySummary(ss) {
 
   if (!summary) {
     summary = ss.insertSheet(SUMMARY_SHEET);
-    summary.getRange(1, 1, 1, headers.length).setValues([headers]);
-    summary.getRange(1, 1, 1, headers.length)
-      .setFontWeight("bold")
-      .setBackground("#6B3FA0")
-      .setFontColor("#FFFFFF");
-    summary.setFrozenRows(1);
   }
+
+  // Always rewrite headers (handles v1 → v2 upgrade)
+  summary.getRange(1, 1, 1, headers.length).setValues([headers]);
+  summary.getRange(1, 1, 1, headers.length)
+    .setFontWeight("bold")
+    .setBackground("#6B3FA0")
+    .setFontColor("#FFFFFF");
+  summary.setFrozenRows(1);
 
   const responses = ss.getSheetByName(SHEET_NAME);
   if (!responses) return;
