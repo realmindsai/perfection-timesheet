@@ -11,10 +11,13 @@
       --green: #4CAF50;
       --green-light: #E8F5E9;
       --orange: #FF9800;
+      --orange-light: #FFF3E0;
       --grey: #F5F5F5;
       --grey-mid: #9E9E9E;
       --text: #333;
       --radius: 8px;
+      --week2-bg: #F3EDFA;
+      --correction-bg: #F0F0F0;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -61,7 +64,7 @@
       margin-bottom: 4px;
     }
 
-    select, input[type="date"], textarea {
+    select, input[type="date"], input[type="number"], textarea {
       width: 100%;
       padding: 10px 12px;
       border: 1.5px solid #DDD;
@@ -189,6 +192,101 @@
     .back-btn { background: white; color: var(--purple); border: 2px solid var(--purple); margin-top: 8px; }
     .back-btn:active { background: var(--purple-light); }
 
+    /* ── Extras row (high risk + estimate) ── */
+    .extras-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .high-risk-field {
+      flex: 0 0 auto;
+    }
+    .high-risk-field input[type="number"] {
+      width: 100px;
+      border-color: var(--orange);
+    }
+    .high-risk-field input[type="number"]:focus {
+      border-color: var(--orange);
+      box-shadow: 0 0 0 3px var(--orange-light);
+    }
+    .high-risk-field label {
+      color: var(--orange);
+      font-weight: 600;
+    }
+    .estimate-field {
+      flex: 1 1 auto;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding-top: 18px;
+    }
+    .estimate-field input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--purple);
+    }
+    .estimate-field label {
+      margin-bottom: 0;
+      font-size: 14px;
+    }
+
+    /* ── Week 2 toggle ── */
+    .week2-toggle {
+      background: var(--purple-light);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      margin-bottom: 12px;
+      text-align: center;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--purple);
+      user-select: none;
+      -webkit-user-select: none;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .week2-toggle:active { background: #D9CCE8; }
+
+    .week2-wrapper {
+      display: none;
+    }
+    .week2-wrapper.open { display: block; }
+    .week2-wrapper .section { background: var(--week2-bg); }
+    .week2-wrapper .day-card { background: var(--week2-bg); }
+    .week2-wrapper .total-card { background: #E0D4EE; }
+
+    /* ── Correction section ── */
+    .correction-section {
+      background: var(--correction-bg);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .correction-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .correction-toggle input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--purple);
+    }
+    .correction-toggle label {
+      margin-bottom: 0;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      cursor: pointer;
+    }
+    .correction-fields {
+      display: none;
+      margin-top: 12px;
+    }
+    .correction-fields.open { display: block; }
+
     /* ── Preview ── */
     .preview-card {
       background: white;
@@ -215,6 +313,7 @@
     .preview-row .pr-label { color: #666; }
     .preview-row .pr-value { font-weight: 600; }
     .preview-row .pr-value.overtime { color: var(--orange); }
+    .preview-row .pr-value.high-risk { color: var(--orange); }
     .preview-totals {
       background: var(--purple-light);
       border-radius: 6px;
@@ -224,6 +323,12 @@
     .preview-totals .preview-row { border-bottom-color: rgba(107,63,160,0.15); }
     .preview-totals .pr-label { color: var(--purple); font-weight: 500; }
     .preview-totals .pr-value { color: var(--purple); }
+    .preview-note {
+      font-size: 13px;
+      color: #666;
+      font-style: italic;
+      margin-top: 4px;
+    }
 
     /* ── Success ── */
     .success-msg { display: none; text-align: center; padding: 40px 20px; }
@@ -243,6 +348,24 @@
       display: inline-block;
       padding: 12px 24px;
       background: var(--purple);
+      color: white;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 12px;
+    }
+
+    /* ── Warning (timeout) ── */
+    .warning-msg { display: none; text-align: center; padding: 40px 20px; }
+    .warning-msg .warn-icon { font-size: 48px; color: var(--orange); }
+    .warning-msg h2 { color: var(--orange); margin: 12px 0 8px; }
+    .warning-msg p { color: #666; }
+    .warning-msg .try-again-btn {
+      display: inline-block;
+      padding: 12px 24px;
+      background: var(--orange);
       color: white;
       border: none;
       border-radius: var(--radius);
@@ -295,37 +418,150 @@
         </div>
         <div class="field">
           <label for="weekEnding">Week Ending (Sunday)</label>
-          <input type="date" id="weekEnding" required>
+          <input type="date" id="weekEnding" required onchange="onWeekEndingChange()">
         </div>
       </div>
 
-      <div id="dayCards"></div>
+      <!-- Week 1 Day Cards -->
+      <div id="w1_dayCards"></div>
 
-      <div class="section" id="totalsSection" style="display:none;">
-        <div class="section-title">Weekly Totals</div>
+      <!-- Week 1 Extras: High Risk + Estimate -->
+      <div class="section" id="w1_extrasSection">
+        <div class="extras-row">
+          <div class="high-risk-field">
+            <label for="w1_highRiskHours">&#9888; High risk hours (masked up)</label>
+            <input type="number" id="w1_highRiskHours" step="0.25" min="0" placeholder="0">
+          </div>
+          <div class="estimate-field">
+            <input type="checkbox" id="w1_isEstimate">
+            <label for="w1_isEstimate">These hours include estimates</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Week 1 Totals -->
+      <div class="section" id="w1_totalsSection" style="display:none;">
+        <div class="section-title">Week 1 Totals</div>
         <div class="totals-grid">
           <div class="total-card">
             <div class="total-label">Ordinary</div>
-            <div class="total-value" id="totalOrd">0.00</div>
+            <div class="total-value" id="w1_totalOrd">0.00</div>
           </div>
           <div class="total-card overtime">
             <div class="total-label">Overtime</div>
-            <div class="total-value" id="totalOT">0.00</div>
+            <div class="total-value" id="w1_totalOT">0.00</div>
           </div>
           <div class="total-card">
             <div class="total-label">Raw Hours</div>
-            <div class="total-value" id="totalRaw">0.00</div>
+            <div class="total-value" id="w1_totalRaw">0.00</div>
           </div>
           <div class="total-card">
             <div class="total-label">Break Deductions</div>
-            <div class="total-value" id="totalBreaks">0.00</div>
+            <div class="total-value" id="w1_totalBreaks">0.00</div>
           </div>
         </div>
       </div>
 
+      <!-- Add Week 2 Toggle -->
+      <div class="week2-toggle" id="week2Toggle" onclick="toggleWeek2()">
+        &#65291; Add Second Week
+      </div>
+
+      <!-- Week 2 Wrapper -->
+      <div class="week2-wrapper" id="week2Wrapper">
+        <div class="section">
+          <div class="field">
+            <label for="w2_weekEnding">Week 2 Ending (Sunday)</label>
+            <input type="date" id="w2_weekEnding">
+          </div>
+        </div>
+
+        <div id="w2_dayCards"></div>
+
+        <!-- Week 2 Extras: High Risk + Estimate -->
+        <div class="section" style="background: var(--week2-bg);">
+          <div class="extras-row">
+            <div class="high-risk-field">
+              <label for="w2_highRiskHours">&#9888; High risk hours (masked up)</label>
+              <input type="number" id="w2_highRiskHours" step="0.25" min="0" placeholder="0">
+            </div>
+            <div class="estimate-field">
+              <input type="checkbox" id="w2_isEstimate">
+              <label for="w2_isEstimate">These hours include estimates</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Week 2 Totals -->
+        <div class="section" id="w2_totalsSection" style="display:none; background: var(--week2-bg);">
+          <div class="section-title">Week 2 Totals</div>
+          <div class="totals-grid">
+            <div class="total-card" style="background: #E0D4EE;">
+              <div class="total-label">Ordinary</div>
+              <div class="total-value" id="w2_totalOrd">0.00</div>
+            </div>
+            <div class="total-card overtime" style="background: #E0D4EE;">
+              <div class="total-label">Overtime</div>
+              <div class="total-value" id="w2_totalOT">0.00</div>
+            </div>
+            <div class="total-card" style="background: #E0D4EE;">
+              <div class="total-label">Raw Hours</div>
+              <div class="total-value" id="w2_totalRaw">0.00</div>
+            </div>
+            <div class="total-card" style="background: #E0D4EE;">
+              <div class="total-label">Break Deductions</div>
+              <div class="total-value" id="w2_totalBreaks">0.00</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Correct Previous Week -->
+      <div class="correction-section">
+        <div class="correction-toggle">
+          <input type="checkbox" id="correctionToggle" onchange="toggleCorrection()">
+          <label for="correctionToggle">I need to correct hours from a previous week</label>
+        </div>
+        <div class="correction-fields" id="correctionFields">
+          <div class="field">
+            <label for="corrWeekEnding">Week ending to correct</label>
+            <input type="date" id="corrWeekEnding">
+          </div>
+          <div class="field">
+            <label for="corrDay">Day to correct</label>
+            <select id="corrDay">
+              <option value="">Select day</option>
+              <option value="mon">Monday</option>
+              <option value="tue">Tuesday</option>
+              <option value="wed">Wednesday</option>
+              <option value="thu">Thursday</option>
+              <option value="fri">Friday</option>
+              <option value="sat">Saturday</option>
+              <option value="sun">Sunday</option>
+            </select>
+          </div>
+          <div class="time-row">
+            <div>
+              <label>Actual Start</label>
+              <div class="time-pick" id="corrStartPick"></div>
+            </div>
+            <div>
+              <label>Actual End</label>
+              <div class="time-pick" id="corrEndPick"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notes section -->
       <div class="section">
         <div class="field">
-          <label for="generalNotes">Anything else? (optional)</label>
+          <label for="unavailableDays">Upcoming days unavailable</label>
+          <input type="text" id="unavailableDays" placeholder="e.g. Off next Thursday and Friday"
+                 style="width:100%;padding:10px 12px;border:1.5px solid #DDD;border-radius:6px;font-size:14px;">
+        </div>
+        <div class="field">
+          <label for="generalNotes">General notes (optional)</label>
           <textarea id="generalNotes" placeholder="Travel, equipment, issues..."></textarea>
         </div>
       </div>
@@ -342,29 +578,79 @@
           <span class="pr-value" id="prevName"></span>
         </div>
         <div class="preview-row">
-          <span class="pr-label">Week Ending</span>
+          <span class="pr-label">Week 1 Ending</span>
           <span class="pr-value" id="prevWeek"></span>
         </div>
       </div>
 
-      <div class="preview-card" id="prevDays"></div>
+      <div class="preview-card" id="prevW1Days"></div>
 
-      <div class="preview-card">
-        <h3>Totals</h3>
+      <div class="preview-card" id="prevW1Totals">
+        <h3>Week 1 Totals</h3>
         <div class="preview-totals">
           <div class="preview-row">
             <span class="pr-label">Ordinary Hours</span>
-            <span class="pr-value" id="prevOrd"></span>
+            <span class="pr-value" id="prevW1Ord"></span>
           </div>
           <div class="preview-row">
             <span class="pr-label">Overtime Hours</span>
-            <span class="pr-value overtime" id="prevOT"></span>
+            <span class="pr-value overtime" id="prevW1OT"></span>
           </div>
           <div class="preview-row">
             <span class="pr-label">Break Deductions</span>
-            <span class="pr-value" id="prevBreaks"></span>
+            <span class="pr-value" id="prevW1Breaks"></span>
+          </div>
+          <div class="preview-row" id="prevW1HRRow" style="display:none;">
+            <span class="pr-label">High Risk Hours</span>
+            <span class="pr-value high-risk" id="prevW1HR"></span>
           </div>
         </div>
+        <div class="preview-note" id="prevW1EstNote" style="display:none;">(includes estimates)</div>
+      </div>
+
+      <!-- Week 2 preview (hidden unless week 2 active) -->
+      <div id="prevW2Section" style="display:none;">
+        <div class="preview-card">
+          <div class="preview-row">
+            <span class="pr-label">Week 2 Ending</span>
+            <span class="pr-value" id="prevW2Week"></span>
+          </div>
+        </div>
+        <div class="preview-card" id="prevW2Days"></div>
+        <div class="preview-card" id="prevW2Totals">
+          <h3>Week 2 Totals</h3>
+          <div class="preview-totals">
+            <div class="preview-row">
+              <span class="pr-label">Ordinary Hours</span>
+              <span class="pr-value" id="prevW2Ord"></span>
+            </div>
+            <div class="preview-row">
+              <span class="pr-label">Overtime Hours</span>
+              <span class="pr-value overtime" id="prevW2OT"></span>
+            </div>
+            <div class="preview-row">
+              <span class="pr-label">Break Deductions</span>
+              <span class="pr-value" id="prevW2Breaks"></span>
+            </div>
+            <div class="preview-row" id="prevW2HRRow" style="display:none;">
+              <span class="pr-label">High Risk Hours</span>
+              <span class="pr-value high-risk" id="prevW2HR"></span>
+            </div>
+          </div>
+          <div class="preview-note" id="prevW2EstNote" style="display:none;">(includes estimates)</div>
+        </div>
+      </div>
+
+      <!-- Correction preview -->
+      <div class="preview-card" id="prevCorrSection" style="display:none;">
+        <h3>Correction</h3>
+        <div id="prevCorrDetails"></div>
+      </div>
+
+      <!-- Notes preview -->
+      <div class="preview-card" id="prevNotesSection" style="display:none;">
+        <h3>Notes</h3>
+        <div id="prevNotesDetails"></div>
       </div>
 
       <button class="confirm-btn" id="confirmBtn" onclick="handleSubmit()">Confirm &amp; Submit</button>
@@ -377,13 +663,17 @@
       <h2>Timesheet Submitted</h2>
       <p id="successName"></p>
       <div class="summary">
-        <dl>
-          <dt>Week Ending</dt><dd id="successWeek"></dd>
-          <dt>Ordinary Hours</dt><dd id="successOrd"></dd>
-          <dt>Overtime Hours</dt><dd id="successOT"></dd>
-        </dl>
+        <dl id="successDetails"></dl>
       </div>
       <button class="another-btn" onclick="resetForm()">Submit Another</button>
+    </div>
+
+    <!-- ── WARNING VIEW (timeout) ── -->
+    <div class="warning-msg" id="warningView">
+      <div class="warn-icon">&#9888;</div>
+      <h2>Submission may not have been received</h2>
+      <p>Please check with Paul</p>
+      <button class="warning-msg try-again-btn" onclick="retrySubmit()">Try Again</button>
     </div>
   </div>
 
@@ -415,6 +705,11 @@
     { value: "45", label: "45" }
   ];
 
+  let week2Active = false;
+  let submitTimedOut = false;
+
+  // ── Utility ──
+
   function showError(msg) {
     const banner = document.getElementById("errorBanner");
     banner.textContent = msg;
@@ -424,275 +719,469 @@
   }
 
   function buildTimeSelect(id, options, placeholder) {
-    let html = `<select id="${id}" onchange="onTimeChange(this)">`;
-    html += `<option value="">${placeholder}</option>`;
-    options.forEach(o => { html += `<option value="${o.value}">${o.label}</option>`; });
-    html += `</select>`;
+    let html = '<select id="' + id + '" onchange="onTimeChange(this)">';
+    html += '<option value="">' + placeholder + '</option>';
+    options.forEach(function(o) { html += '<option value="' + o.value + '">' + o.label + '</option>'; });
+    html += '</select>';
     return html;
   }
 
-  function buildDayCards() {
-    const container = document.getElementById("dayCards");
-    DAYS.forEach((day, i) => {
-      const card = document.createElement("div");
-      card.className = "day-card";
-      card.id = "card-" + day.key;
-
-      const startHr = buildTimeSelect(day.key + "StartH", HOURS, "Hr");
-      const startMn = buildTimeSelect(day.key + "StartM", MINS, "Min");
-      const endHr = buildTimeSelect(day.key + "EndH", HOURS, "Hr");
-      const endMn = buildTimeSelect(day.key + "EndM", MINS, "Min");
-
-      card.innerHTML = `
-        <div class="day-header" onclick="toggleDay('${day.key}')">
-          <span class="day-name">${day.name}</span>
-          <span class="day-summary" id="summary-${day.key}">Tap to add</span>
-        </div>
-        <div class="day-body" id="body-${day.key}">
-          <div class="time-row">
-            <div>
-              <label>Start</label>
-              <div class="time-pick">${startHr}<span class="colon">:</span>${startMn}</div>
-            </div>
-            <div>
-              <label>End</label>
-              <div class="time-pick">${endHr}<span class="colon">:</span>${endMn}</div>
-            </div>
-          </div>
-          <div class="calc-row" id="calc-${day.key}" style="display:none;">
-            <div class="calc-box">
-              <div class="calc-label">Raw</div>
-              <div class="calc-value" id="raw-${day.key}">-</div>
-            </div>
-            <div class="calc-box">
-              <div class="calc-label">Ordinary</div>
-              <div class="calc-value" id="ord-${day.key}">-</div>
-            </div>
-            <div class="calc-box overtime">
-              <div class="calc-label">Overtime</div>
-              <div class="calc-value" id="ot-${day.key}">-</div>
-            </div>
-          </div>
-          <div class="day-notes">
-            <label>Notes</label>
-            <input type="text" id="${day.key}Notes" placeholder="Optional">
-          </div>
-        </div>
-      `;
-      container.appendChild(card);
-    });
-    document.getElementById("body-mon").classList.add("open");
+  function fmtTime(h, m) {
+    var ampm = h < 12 ? "am" : "pm";
+    var dh = h === 0 ? 12 : h <= 12 ? h : h - 12;
+    return dh + ":" + String(m).padStart(2, "0") + ampm;
   }
 
-  function toggleDay(key) {
-    document.getElementById("body-" + key).classList.toggle("open");
+  function fmtDate(dateStr) {
+    var d = new Date(dateStr + "T00:00:00");
+    return d.toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+  }
+
+  // ── Day cards (prefix-aware) ──
+
+  function buildDayCards(prefix, containerId) {
+    var container = document.getElementById(containerId);
+    DAYS.forEach(function(day, i) {
+      var card = document.createElement("div");
+      card.className = "day-card";
+      card.id = prefix + "_card-" + day.key;
+
+      var startHr = buildTimeSelect(prefix + "_" + day.key + "StartH", HOURS, "Hr");
+      var startMn = buildTimeSelect(prefix + "_" + day.key + "StartM", MINS, "Min");
+      var endHr = buildTimeSelect(prefix + "_" + day.key + "EndH", HOURS, "Hr");
+      var endMn = buildTimeSelect(prefix + "_" + day.key + "EndM", MINS, "Min");
+
+      card.innerHTML =
+        '<div class="day-header" onclick="toggleDay(\'' + prefix + "','" + day.key + '\')">' +
+          '<span class="day-name">' + day.name + '</span>' +
+          '<span class="day-summary" id="' + prefix + '_summary-' + day.key + '">Tap to add</span>' +
+        '</div>' +
+        '<div class="day-body" id="' + prefix + '_body-' + day.key + '">' +
+          '<div class="time-row">' +
+            '<div>' +
+              '<label>Start</label>' +
+              '<div class="time-pick">' + startHr + '<span class="colon">:</span>' + startMn + '</div>' +
+            '</div>' +
+            '<div>' +
+              '<label>End</label>' +
+              '<div class="time-pick">' + endHr + '<span class="colon">:</span>' + endMn + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="calc-row" id="' + prefix + '_calc-' + day.key + '" style="display:none;">' +
+            '<div class="calc-box">' +
+              '<div class="calc-label">Raw</div>' +
+              '<div class="calc-value" id="' + prefix + '_raw-' + day.key + '">-</div>' +
+            '</div>' +
+            '<div class="calc-box">' +
+              '<div class="calc-label">Ordinary</div>' +
+              '<div class="calc-value" id="' + prefix + '_ord-' + day.key + '">-</div>' +
+            '</div>' +
+            '<div class="calc-box overtime">' +
+              '<div class="calc-label">Overtime</div>' +
+              '<div class="calc-value" id="' + prefix + '_ot-' + day.key + '">-</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="day-notes">' +
+            '<label>Notes</label>' +
+            '<input type="text" id="' + prefix + '_' + day.key + 'Notes" placeholder="Optional">' +
+          '</div>' +
+        '</div>';
+      container.appendChild(card);
+    });
+    // Open Monday by default
+    document.getElementById(prefix + "_body-mon").classList.add("open");
+  }
+
+  function toggleDay(prefix, key) {
+    document.getElementById(prefix + "_body-" + key).classList.toggle("open");
   }
 
   function onTimeChange(el) {
-    const id = el.id;
-    const dayKey = id.replace(/(Start|End)(H|M)$/, "");
-    clearDayError(dayKey);
-    calcDay(dayKey);
+    var id = el.id;
+    // Extract prefix and day key: e.g. "w1_monStartH" → prefix="w1", dayKey="mon"
+    var parts = id.split("_");
+    var prefix = parts[0];
+    var rest = parts[1]; // e.g. "monStartH"
+    var dayKey = rest.replace(/(Start|End)(H|M)$/, "");
+    clearDayError(prefix, dayKey);
+    calcDay(prefix, dayKey);
   }
 
-  function getTime(dayKey, which) {
-    const h = document.getElementById(dayKey + which + "H").value;
-    const m = document.getElementById(dayKey + which + "M").value;
+  function getTime(prefix, dayKey, which) {
+    var h = document.getElementById(prefix + "_" + dayKey + which + "H").value;
+    var m = document.getElementById(prefix + "_" + dayKey + which + "M").value;
     if (h === "" || m === "") return "";
     return String(h).padStart(2, "0") + ":" + m;
   }
 
+  function getTimeFormatted(prefix, dayKey, which) {
+    return getTime(prefix, dayKey, which);
+  }
+
   // Check if a day has ANY fields filled
-  function dayHasAnyInput(key) {
-    return document.getElementById(key + "StartH").value !== "" ||
-           document.getElementById(key + "StartM").value !== "" ||
-           document.getElementById(key + "EndH").value !== "" ||
-           document.getElementById(key + "EndM").value !== "";
+  function dayHasAnyInput(prefix, key) {
+    return document.getElementById(prefix + "_" + key + "StartH").value !== "" ||
+           document.getElementById(prefix + "_" + key + "StartM").value !== "" ||
+           document.getElementById(prefix + "_" + key + "EndH").value !== "" ||
+           document.getElementById(prefix + "_" + key + "EndM").value !== "";
   }
 
   // Check if a day is fully complete (both start and end)
-  function dayIsComplete(key) {
-    return getTime(key, "Start") !== "" && getTime(key, "End") !== "";
+  function dayIsComplete(prefix, key) {
+    return getTime(prefix, key, "Start") !== "" && getTime(prefix, key, "End") !== "";
   }
 
   // Check if a day is completely empty
-  function dayIsEmpty(key) {
-    return !dayHasAnyInput(key);
+  function dayIsEmpty(prefix, key) {
+    return !dayHasAnyInput(prefix, key);
   }
 
-  function clearDayError(key) {
-    const card = document.getElementById("card-" + key);
+  function clearDayError(prefix, key) {
+    var card = document.getElementById(prefix + "_card-" + key);
     card.classList.remove("has-error");
-    ["StartH", "StartM", "EndH", "EndM"].forEach(suffix => {
-      document.getElementById(key + suffix).classList.remove("error");
+    ["StartH", "StartM", "EndH", "EndM"].forEach(function(suffix) {
+      document.getElementById(prefix + "_" + key + suffix).classList.remove("error");
     });
   }
 
-  function markDayError(key) {
-    const card = document.getElementById("card-" + key);
+  function markDayError(prefix, key) {
+    var card = document.getElementById(prefix + "_card-" + key);
     card.classList.add("has-error");
-    // Highlight empty selects
-    ["StartH", "StartM", "EndH", "EndM"].forEach(suffix => {
-      const el = document.getElementById(key + suffix);
+    ["StartH", "StartM", "EndH", "EndM"].forEach(function(suffix) {
+      var el = document.getElementById(prefix + "_" + key + suffix);
       if (el.value === "") el.classList.add("error");
     });
-    // Open the day so they can see the issue
-    document.getElementById("body-" + key).classList.add("open");
-    const summary = document.getElementById("summary-" + key);
+    document.getElementById(prefix + "_body-" + key).classList.add("open");
+    var summary = document.getElementById(prefix + "_summary-" + key);
     summary.textContent = "Incomplete — fill in all fields";
   }
 
-  function calcDay(key) {
-    const start = getTime(key, "Start");
-    const end = getTime(key, "End");
-    const calcRow = document.getElementById("calc-" + key);
-    const card = document.getElementById("card-" + key);
-    const summary = document.getElementById("summary-" + key);
+  function calcDay(prefix, key) {
+    var start = getTime(prefix, key, "Start");
+    var end = getTime(prefix, key, "End");
+    var calcRow = document.getElementById(prefix + "_calc-" + key);
+    var card = document.getElementById(prefix + "_card-" + key);
+    var summary = document.getElementById(prefix + "_summary-" + key);
 
     if (!start || !end) {
       calcRow.style.display = "none";
       card.classList.remove("has-data");
-      summary.textContent = dayHasAnyInput(key) ? "Incomplete" : "Tap to add";
-      updateTotals();
+      summary.textContent = dayHasAnyInput(prefix, key) ? "Incomplete" : "Tap to add";
+      updateTotals(prefix);
       return;
     }
 
-    const [sHr, sMin] = start.split(":").map(Number);
-    const [eHr, eMin] = end.split(":").map(Number);
-    let raw = (eHr * 60 + eMin - sHr * 60 - sMin) / 60;
+    var sparts = start.split(":").map(Number);
+    var eparts = end.split(":").map(Number);
+    var raw = (eparts[0] * 60 + eparts[1] - sparts[0] * 60 - sparts[1]) / 60;
     if (raw < 0) raw += 24;
 
-    let worked = raw;
+    var worked = raw;
     if (raw > 5) worked = raw - 0.5;
 
-    let ordinary, overtime;
+    var ordinary, overtime;
     if (worked > 8.5) { ordinary = 8.5; overtime = worked - 8.5; }
     else { ordinary = worked; overtime = 0; }
 
-    document.getElementById("raw-" + key).textContent = raw.toFixed(2);
-    document.getElementById("ord-" + key).textContent = ordinary.toFixed(2);
-    document.getElementById("ot-" + key).textContent = overtime.toFixed(2);
+    document.getElementById(prefix + "_raw-" + key).textContent = raw.toFixed(2);
+    document.getElementById(prefix + "_ord-" + key).textContent = ordinary.toFixed(2);
+    document.getElementById(prefix + "_ot-" + key).textContent = overtime.toFixed(2);
     calcRow.style.display = "grid";
 
     card.classList.remove("has-error");
     card.classList.add("has-data");
     summary.textContent = ordinary.toFixed(1) + "h" + (overtime > 0 ? " + " + overtime.toFixed(1) + "h OT" : "");
-    updateTotals();
+    updateTotals(prefix);
   }
 
-  function updateTotals() {
-    let totalRaw = 0, totalBreaks = 0, totalOrd = 0, totalOT = 0, hasData = false;
+  function updateTotals(prefix) {
+    var totalRaw = 0, totalBreaks = 0, totalOrd = 0, totalOT = 0, hasData = false;
 
-    DAYS.forEach(day => {
-      const start = getTime(day.key, "Start");
-      const end = getTime(day.key, "End");
+    DAYS.forEach(function(day) {
+      var start = getTime(prefix, day.key, "Start");
+      var end = getTime(prefix, day.key, "End");
       if (!start || !end) return;
 
       hasData = true;
-      const [sh, sm] = start.split(":").map(Number);
-      const [eh, em] = end.split(":").map(Number);
-      let raw = (eh * 60 + em - sh * 60 - sm) / 60;
+      var sp = start.split(":").map(Number);
+      var ep = end.split(":").map(Number);
+      var raw = (ep[0] * 60 + ep[1] - sp[0] * 60 - sp[1]) / 60;
       if (raw < 0) raw += 24;
 
       totalRaw += raw;
-      let worked = raw;
+      var worked = raw;
       if (raw > 5) { worked = raw - 0.5; totalBreaks += 0.5; }
       if (worked > 8.5) { totalOrd += 8.5; totalOT += worked - 8.5; }
       else { totalOrd += worked; }
     });
 
-    document.getElementById("totalRaw").textContent = totalRaw.toFixed(2);
-    document.getElementById("totalBreaks").textContent = totalBreaks.toFixed(2);
-    document.getElementById("totalOrd").textContent = totalOrd.toFixed(2);
-    document.getElementById("totalOT").textContent = totalOT.toFixed(2);
-    document.getElementById("totalsSection").style.display = hasData ? "block" : "none";
+    document.getElementById(prefix + "_totalRaw").textContent = totalRaw.toFixed(2);
+    document.getElementById(prefix + "_totalBreaks").textContent = totalBreaks.toFixed(2);
+    document.getElementById(prefix + "_totalOrd").textContent = totalOrd.toFixed(2);
+    document.getElementById(prefix + "_totalOT").textContent = totalOT.toFixed(2);
+    document.getElementById(prefix + "_totalsSection").style.display = hasData ? "block" : "none";
+  }
+
+  // ── Week 2 toggle ──
+
+  function toggleWeek2() {
+    week2Active = !week2Active;
+    var wrapper = document.getElementById("week2Wrapper");
+    var toggle = document.getElementById("week2Toggle");
+
+    if (week2Active) {
+      wrapper.classList.add("open");
+      toggle.textContent = "\u2212 Remove Second Week";
+      // Auto-fill week 2 ending = week 1 ending + 7 days
+      var w1End = document.getElementById("weekEnding").value;
+      if (w1End) {
+        var d = new Date(w1End + "T00:00:00");
+        d.setDate(d.getDate() + 7);
+        document.getElementById("w2_weekEnding").value = d.toISOString().split("T")[0];
+      }
+    } else {
+      wrapper.classList.remove("open");
+      toggle.innerHTML = "&#65291; Add Second Week";
+      clearWeekData("w2");
+    }
+  }
+
+  function onWeekEndingChange() {
+    // If week 2 is active, auto-update week 2 ending
+    if (week2Active) {
+      var w1End = document.getElementById("weekEnding").value;
+      if (w1End) {
+        var d = new Date(w1End + "T00:00:00");
+        d.setDate(d.getDate() + 7);
+        document.getElementById("w2_weekEnding").value = d.toISOString().split("T")[0];
+      }
+    }
+  }
+
+  function clearWeekData(prefix) {
+    DAYS.forEach(function(day) {
+      document.getElementById(prefix + "_" + day.key + "StartH").value = "";
+      document.getElementById(prefix + "_" + day.key + "StartM").value = "";
+      document.getElementById(prefix + "_" + day.key + "EndH").value = "";
+      document.getElementById(prefix + "_" + day.key + "EndM").value = "";
+      document.getElementById(prefix + "_" + day.key + "Notes").value = "";
+      document.getElementById(prefix + "_calc-" + day.key).style.display = "none";
+      document.getElementById(prefix + "_card-" + day.key).classList.remove("has-data");
+      document.getElementById(prefix + "_card-" + day.key).classList.remove("has-error");
+      document.getElementById(prefix + "_summary-" + day.key).textContent = "Tap to add";
+    });
+    document.getElementById(prefix + "_totalsSection").style.display = "none";
+    document.getElementById(prefix + "_totalRaw").textContent = "0.00";
+    document.getElementById(prefix + "_totalBreaks").textContent = "0.00";
+    document.getElementById(prefix + "_totalOrd").textContent = "0.00";
+    document.getElementById(prefix + "_totalOT").textContent = "0.00";
+    document.getElementById(prefix + "_highRiskHours").value = "";
+    document.getElementById(prefix + "_isEstimate").checked = false;
+  }
+
+  // ── Correction toggle ──
+
+  function toggleCorrection() {
+    var checked = document.getElementById("correctionToggle").checked;
+    var fields = document.getElementById("correctionFields");
+    if (checked) {
+      fields.classList.add("open");
+    } else {
+      fields.classList.remove("open");
+    }
+  }
+
+  // Build correction time pickers
+  function buildCorrectionPickers() {
+    var startPick = document.getElementById("corrStartPick");
+    var endPick = document.getElementById("corrEndPick");
+    startPick.innerHTML = buildTimeSelect("corrStartH", HOURS, "Hr") +
+                          '<span class="colon">:</span>' +
+                          buildTimeSelect("corrStartM", MINS, "Min");
+    endPick.innerHTML = buildTimeSelect("corrEndH", HOURS, "Hr") +
+                        '<span class="colon">:</span>' +
+                        buildTimeSelect("corrEndM", MINS, "Min");
+  }
+
+  function getCorrTime(which) {
+    var h = document.getElementById("corr" + which + "H").value;
+    var m = document.getElementById("corr" + which + "M").value;
+    if (h === "" || m === "") return "";
+    return String(h).padStart(2, "0") + ":" + m;
   }
 
   // ── Validate before preview ──
   function validate() {
-    const staffName = document.getElementById("staffName").value.trim();
-    const weekEnding = document.getElementById("weekEnding").value;
+    var staffName = document.getElementById("staffName").value.trim();
+    var weekEnding = document.getElementById("weekEnding").value;
 
     if (!staffName) { showError("Please enter your name."); return false; }
     if (!weekEnding) { showError("Please select the week ending date."); return false; }
 
-    // Check for incomplete days (some fields filled, but not all four)
-    let hasError = false;
-    let hasComplete = false;
-    const errorDays = [];
+    // Validate week 1 days
+    if (!validateWeekDays("w1")) return false;
 
-    DAYS.forEach(day => {
-      clearDayError(day.key);
-      if (dayIsEmpty(day.key)) return; // blank day is fine
-      if (dayIsComplete(day.key)) { hasComplete = true; return; } // complete day is fine
-      // Partially filled — error
+    // Validate week 2 if active
+    if (week2Active) {
+      var w2End = document.getElementById("w2_weekEnding").value;
+      if (!w2End) { showError("Please select the Week 2 ending date."); return false; }
+      if (!validateWeekDays("w2")) return false;
+    }
+
+    // Validate correction if toggled
+    if (document.getElementById("correctionToggle").checked) {
+      var corrWE = document.getElementById("corrWeekEnding").value;
+      var corrDay = document.getElementById("corrDay").value;
+      var corrStart = getCorrTime("Start");
+      var corrEnd = getCorrTime("End");
+
+      if (!corrWE) { showError("Please select the week ending to correct."); return false; }
+      if (!corrDay) { showError("Please select the day to correct."); return false; }
+      if (!corrStart || !corrEnd) { showError("Please enter both start and end times for the correction."); return false; }
+    }
+
+    return true;
+  }
+
+  function validateWeekDays(prefix) {
+    var hasError = false;
+    var hasComplete = false;
+    var errorDays = [];
+
+    DAYS.forEach(function(day) {
+      clearDayError(prefix, day.key);
+      if (dayIsEmpty(prefix, day.key)) return;
+      if (dayIsComplete(prefix, day.key)) { hasComplete = true; return; }
       hasError = true;
       errorDays.push(day.name);
-      markDayError(day.key);
+      markDayError(prefix, day.key);
     });
 
+    var weekLabel = prefix === "w1" ? "" : " (Week 2)";
+
     if (hasError) {
-      showError(errorDays.join(", ") + " — please fill in all time fields or clear the day.");
+      showError(errorDays.join(", ") + weekLabel + " — please fill in all time fields or clear the day.");
       return false;
     }
 
     if (!hasComplete) {
-      showError("Please enter times for at least one day.");
+      showError("Please enter times for at least one day" + weekLabel + ".");
       return false;
     }
 
     return true;
   }
 
+  // ── Build week preview ──
+
+  function buildWeekPreview(prefix, daysContainer, totalsPrefix) {
+    var container = document.getElementById(daysContainer);
+    container.innerHTML = "<h3>" + (prefix === "w1" ? "Week 1" : "Week 2") + " — Hours by Day</h3>";
+
+    DAYS.forEach(function(day) {
+      if (!dayIsComplete(prefix, day.key)) return;
+
+      var start = getTime(prefix, day.key, "Start");
+      var end = getTime(prefix, day.key, "End");
+      var sp = start.split(":").map(Number);
+      var ep = end.split(":").map(Number);
+      var raw = (ep[0] * 60 + ep[1] - sp[0] * 60 - sp[1]) / 60;
+      if (raw < 0) raw += 24;
+      var worked = raw > 5 ? raw - 0.5 : raw;
+      var ord = worked > 8.5 ? 8.5 : worked;
+      var ot = worked > 8.5 ? worked - 8.5 : 0;
+
+      var detail = fmtTime(sp[0], sp[1]) + " — " + fmtTime(ep[0], ep[1]) + "  |  " + ord.toFixed(1) + "h";
+      if (ot > 0) detail += " + " + ot.toFixed(1) + "h OT";
+
+      container.innerHTML +=
+        '<div class="preview-row">' +
+          '<span class="pr-label">' + day.name + '</span>' +
+          '<span class="pr-value">' + detail + '</span>' +
+        '</div>';
+    });
+
+    // Totals
+    document.getElementById(totalsPrefix + "Ord").textContent = document.getElementById(prefix + "_totalOrd").textContent + " hrs";
+    document.getElementById(totalsPrefix + "OT").textContent = document.getElementById(prefix + "_totalOT").textContent + " hrs";
+    document.getElementById(totalsPrefix + "Breaks").textContent = document.getElementById(prefix + "_totalBreaks").textContent + " hrs";
+
+    // High risk hours
+    var hrVal = parseFloat(document.getElementById(prefix + "_highRiskHours").value) || 0;
+    var hrRow = document.getElementById(totalsPrefix + "HRRow");
+    if (hrVal > 0) {
+      document.getElementById(totalsPrefix + "HR").textContent = hrVal.toFixed(2) + " hrs";
+      hrRow.style.display = "flex";
+    } else {
+      hrRow.style.display = "none";
+    }
+
+    // Estimate note
+    var isEst = document.getElementById(prefix + "_isEstimate").checked;
+    document.getElementById(totalsPrefix + "EstNote").style.display = isEst ? "block" : "none";
+  }
+
   // ── Preview step ──
   function showPreview() {
     if (!validate()) return;
 
-    const name = document.getElementById("staffName").value.trim();
-    const week = document.getElementById("weekEnding").value;
+    var name = document.getElementById("staffName").value.trim();
+    var week = document.getElementById("weekEnding").value;
 
     document.getElementById("prevName").textContent = name;
-    // Format date nicely
-    const d = new Date(week + "T00:00:00");
-    const formatted = d.toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
-    document.getElementById("prevWeek").textContent = formatted;
+    document.getElementById("prevWeek").textContent = fmtDate(week);
 
-    // Build day rows
-    const container = document.getElementById("prevDays");
-    container.innerHTML = "<h3>Hours by Day</h3>";
+    // Build week 1 preview
+    buildWeekPreview("w1", "prevW1Days", "prevW1");
 
-    DAYS.forEach(day => {
-      if (!dayIsComplete(day.key)) return;
+    // Week 2 preview
+    var w2Section = document.getElementById("prevW2Section");
+    if (week2Active) {
+      w2Section.style.display = "block";
+      document.getElementById("prevW2Week").textContent = fmtDate(document.getElementById("w2_weekEnding").value);
+      buildWeekPreview("w2", "prevW2Days", "prevW2");
+    } else {
+      w2Section.style.display = "none";
+    }
 
-      const start = getTime(day.key, "Start");
-      const end = getTime(day.key, "End");
-      const [sH, sM] = start.split(":").map(Number);
-      const [eH, eM] = end.split(":").map(Number);
-      let raw = (eH * 60 + eM - sH * 60 - sM) / 60;
-      if (raw < 0) raw += 24;
-      let worked = raw > 5 ? raw - 0.5 : raw;
-      let ord = worked > 8.5 ? 8.5 : worked;
-      let ot = worked > 8.5 ? worked - 8.5 : 0;
+    // Correction preview
+    var corrSection = document.getElementById("prevCorrSection");
+    if (document.getElementById("correctionToggle").checked) {
+      corrSection.style.display = "block";
+      var corrWE = document.getElementById("corrWeekEnding").value;
+      var corrDayVal = document.getElementById("corrDay").value;
+      var corrDayName = "";
+      DAYS.forEach(function(d) { if (d.key === corrDayVal) corrDayName = d.name; });
+      var corrStart = getCorrTime("Start");
+      var corrEnd = getCorrTime("End");
+      var csp = corrStart.split(":").map(Number);
+      var cep = corrEnd.split(":").map(Number);
 
-      const fmtTime = (h, m) => {
-        const ampm = h < 12 ? "am" : "pm";
-        const dh = h === 0 ? 12 : h <= 12 ? h : h - 12;
-        return dh + ":" + String(m).padStart(2, "0") + ampm;
-      };
+      document.getElementById("prevCorrDetails").innerHTML =
+        '<div class="preview-row"><span class="pr-label">Week ending</span><span class="pr-value">' + fmtDate(corrWE) + '</span></div>' +
+        '<div class="preview-row"><span class="pr-label">Day</span><span class="pr-value">' + corrDayName + '</span></div>' +
+        '<div class="preview-row"><span class="pr-label">Actual hours</span><span class="pr-value">' + fmtTime(csp[0], csp[1]) + ' — ' + fmtTime(cep[0], cep[1]) + '</span></div>';
+    } else {
+      corrSection.style.display = "none";
+    }
 
-      let detail = fmtTime(sH, sM) + " — " + fmtTime(eH, eM) + "  |  " + ord.toFixed(1) + "h";
-      if (ot > 0) detail += " + " + ot.toFixed(1) + "h OT";
-
-      container.innerHTML += `
-        <div class="preview-row">
-          <span class="pr-label">${day.name}</span>
-          <span class="pr-value">${detail}</span>
-        </div>`;
-    });
-
-    document.getElementById("prevOrd").textContent = document.getElementById("totalOrd").textContent + " hrs";
-    document.getElementById("prevOT").textContent = document.getElementById("totalOT").textContent + " hrs";
-    document.getElementById("prevBreaks").textContent = document.getElementById("totalBreaks").textContent + " hrs";
+    // Notes preview
+    var unavail = document.getElementById("unavailableDays").value.trim();
+    var notes = document.getElementById("generalNotes").value.trim();
+    var notesSection = document.getElementById("prevNotesSection");
+    if (unavail || notes) {
+      notesSection.style.display = "block";
+      var html = "";
+      if (unavail) {
+        html += '<div class="preview-row"><span class="pr-label">Unavailable</span><span class="pr-value">' + unavail + '</span></div>';
+      }
+      if (notes) {
+        html += '<div class="preview-row"><span class="pr-label">Notes</span><span class="pr-value">' + notes + '</span></div>';
+      }
+      document.getElementById("prevNotesDetails").innerHTML = html;
+    } else {
+      notesSection.style.display = "none";
+    }
 
     document.getElementById("formView").style.display = "none";
     document.getElementById("previewView").style.display = "block";
@@ -705,72 +1194,158 @@
     window.scrollTo(0, 0);
   }
 
-  // ── Submit via hidden form + iframe ──
-  function handleSubmit() {
-    const btn = document.getElementById("confirmBtn");
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span>Submitting...';
+  // ── Build v2 payload ──
 
-    const staffName = document.getElementById("staffName").value.trim();
-    const weekEnding = document.getElementById("weekEnding").value;
-
-    const formData = {
-      staffName: staffName,
-      weekEnding: weekEnding,
-      generalNotes: document.getElementById("generalNotes").value
+  function buildWeekPayload(prefix, weekEndingValue) {
+    var week = {
+      weekEnding: weekEndingValue,
+      isEstimate: document.getElementById(prefix + "_isEstimate").checked,
+      highRiskHours: parseFloat(document.getElementById(prefix + "_highRiskHours").value) || 0
     };
-    DAYS.forEach(day => {
-      formData[day.key + "Start"] = getTime(day.key, "Start");
-      formData[day.key + "End"] = getTime(day.key, "End");
-      formData[day.key + "Notes"] = document.getElementById(day.key + "Notes").value;
+
+    DAYS.forEach(function(day) {
+      week[day.key + "Start"] = getTime(prefix, day.key, "Start");
+      week[day.key + "End"] = getTime(prefix, day.key, "End");
+      week[day.key + "Notes"] = document.getElementById(prefix + "_" + day.key + "Notes").value;
     });
 
-    const form = document.createElement("form");
+    return week;
+  }
+
+  function buildPayload() {
+    var staffName = document.getElementById("staffName").value.trim();
+    var weekEnding = document.getElementById("weekEnding").value;
+
+    var payload = {
+      version: 2,
+      staffName: staffName,
+      weeks: [buildWeekPayload("w1", weekEnding)],
+      correction: null,
+      unavailableDays: document.getElementById("unavailableDays").value.trim() || "",
+      generalNotes: document.getElementById("generalNotes").value.trim() || ""
+    };
+
+    if (week2Active) {
+      payload.weeks.push(buildWeekPayload("w2", document.getElementById("w2_weekEnding").value));
+    }
+
+    if (document.getElementById("correctionToggle").checked) {
+      payload.correction = {
+        weekEnding: document.getElementById("corrWeekEnding").value,
+        day: document.getElementById("corrDay").value,
+        start: getCorrTime("Start"),
+        end: getCorrTime("End")
+      };
+    }
+
+    return payload;
+  }
+
+  // ── Submit via hidden form + iframe ──
+  function handleSubmit() {
+    var btn = document.getElementById("confirmBtn");
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Submitting...';
+    submitTimedOut = false;
+
+    var payload = buildPayload();
+
+    var form = document.createElement("form");
     form.method = "POST";
     form.action = SCRIPT_URL;
     form.target = "submitFrame";
     form.style.display = "none";
 
-    const input = document.createElement("input");
+    var input = document.createElement("input");
     input.type = "hidden";
     input.name = "data";
-    input.value = JSON.stringify(formData);
+    input.value = JSON.stringify(payload);
     form.appendChild(input);
     document.body.appendChild(form);
 
-    const iframe = document.getElementById("submitFrame");
+    var iframe = document.getElementById("submitFrame");
     iframe.onload = function() {
-      document.body.removeChild(form);
-      onSuccess({
-        name: staffName,
-        weekEnding: weekEnding,
-        totalOrdinary: parseFloat(document.getElementById("totalOrd").textContent),
-        totalOvertime: parseFloat(document.getElementById("totalOT").textContent)
-      });
+      if (submitTimedOut) return; // timeout already fired, ignore late load
+      submitTimedOut = true; // prevent timeout from also firing
+      try { document.body.removeChild(form); } catch(e) {}
+      onSuccess(payload);
     };
 
     form.submit();
 
-    setTimeout(() => {
-      if (btn.disabled) {
+    setTimeout(function() {
+      if (!submitTimedOut) {
+        submitTimedOut = true;
         try { document.body.removeChild(form); } catch(e) {}
-        onSuccess({
-          name: staffName,
-          weekEnding: weekEnding,
-          totalOrdinary: parseFloat(document.getElementById("totalOrd").textContent),
-          totalOvertime: parseFloat(document.getElementById("totalOT").textContent)
-        });
+        onWarning();
       }
     }, 6000);
   }
 
-  function onSuccess(result) {
+  function onSuccess(payload) {
     document.getElementById("previewView").style.display = "none";
     document.getElementById("successView").style.display = "block";
-    document.getElementById("successName").textContent = result.name;
-    document.getElementById("successWeek").textContent = result.weekEnding;
-    document.getElementById("successOrd").textContent = result.totalOrdinary.toFixed(2) + " hrs";
-    document.getElementById("successOT").textContent = result.totalOvertime.toFixed(2) + " hrs";
+    document.getElementById("successName").textContent = payload.staffName;
+
+    var dl = document.getElementById("successDetails");
+    var w1 = payload.weeks[0];
+    var w1Ord = parseFloat(document.getElementById("w1_totalOrd").textContent);
+    var w1OT = parseFloat(document.getElementById("w1_totalOT").textContent);
+    var w1HR = w1.highRiskHours || 0;
+
+    var html = '<dt>Week 1 Ending</dt><dd>' + fmtDate(w1.weekEnding) + '</dd>' +
+               '<dt>Ordinary Hours</dt><dd>' + w1Ord.toFixed(2) + ' hrs</dd>' +
+               '<dt>Overtime Hours</dt><dd>' + w1OT.toFixed(2) + ' hrs</dd>';
+
+    if (w1HR > 0) {
+      html += '<dt>High Risk Hours</dt><dd>' + w1HR.toFixed(2) + ' hrs</dd>';
+    }
+    if (w1.isEstimate) {
+      html += '<dd style="font-size:13px;color:#666;font-style:italic;margin-top:-4px;">(includes estimates)</dd>';
+    }
+
+    if (payload.weeks.length > 1) {
+      var w2 = payload.weeks[1];
+      var w2Ord = parseFloat(document.getElementById("w2_totalOrd").textContent);
+      var w2OT = parseFloat(document.getElementById("w2_totalOT").textContent);
+      var w2HR = w2.highRiskHours || 0;
+
+      html += '<dt style="margin-top:12px;padding-top:12px;border-top:1px solid #C8E6C9;">Week 2 Ending</dt><dd>' + fmtDate(w2.weekEnding) + '</dd>' +
+              '<dt>Ordinary Hours</dt><dd>' + w2Ord.toFixed(2) + ' hrs</dd>' +
+              '<dt>Overtime Hours</dt><dd>' + w2OT.toFixed(2) + ' hrs</dd>';
+
+      if (w2HR > 0) {
+        html += '<dt>High Risk Hours</dt><dd>' + w2HR.toFixed(2) + ' hrs</dd>';
+      }
+      if (w2.isEstimate) {
+        html += '<dd style="font-size:13px;color:#666;font-style:italic;margin-top:-4px;">(includes estimates)</dd>';
+      }
+    }
+
+    // Submission notes
+    var extraNotes = [];
+    if (payload.weeks.length > 1) extraNotes.push("2 weeks submitted");
+    if (payload.correction) extraNotes.push("Correction submitted for " + fmtDate(payload.correction.weekEnding));
+    if (extraNotes.length > 0) {
+      html += '<dt style="margin-top:12px;padding-top:12px;border-top:1px solid #C8E6C9;">Info</dt><dd>' + extraNotes.join("<br>") + '</dd>';
+    }
+
+    dl.innerHTML = html;
+    window.scrollTo(0, 0);
+  }
+
+  function onWarning() {
+    document.getElementById("previewView").style.display = "none";
+    document.getElementById("warningView").style.display = "block";
+    window.scrollTo(0, 0);
+  }
+
+  function retrySubmit() {
+    document.getElementById("warningView").style.display = "none";
+    document.getElementById("previewView").style.display = "block";
+    var btn = document.getElementById("confirmBtn");
+    btn.disabled = false;
+    btn.textContent = "Confirm & Submit";
     window.scrollTo(0, 0);
   }
 
@@ -778,28 +1353,45 @@
     document.getElementById("formView").style.display = "block";
     document.getElementById("successView").style.display = "none";
     document.getElementById("previewView").style.display = "none";
+    document.getElementById("warningView").style.display = "none";
     document.getElementById("staffName").value = "";
     document.getElementById("weekEnding").value = "";
+    document.getElementById("unavailableDays").value = "";
     document.getElementById("generalNotes").value = "";
-    DAYS.forEach(day => {
-      document.getElementById(day.key + "StartH").value = "";
-      document.getElementById(day.key + "StartM").value = "";
-      document.getElementById(day.key + "EndH").value = "";
-      document.getElementById(day.key + "EndM").value = "";
-      document.getElementById(day.key + "Notes").value = "";
-      document.getElementById("calc-" + day.key).style.display = "none";
-      document.getElementById("card-" + day.key).classList.remove("has-data");
-      document.getElementById("card-" + day.key).classList.remove("has-error");
-      document.getElementById("summary-" + day.key).textContent = "Tap to add";
-    });
-    document.getElementById("totalsSection").style.display = "none";
-    const btn = document.getElementById("confirmBtn");
+
+    // Clear week 1
+    clearWeekData("w1");
+
+    // Close week 2 if open
+    if (week2Active) {
+      week2Active = false;
+      document.getElementById("week2Wrapper").classList.remove("open");
+      document.getElementById("week2Toggle").innerHTML = "&#65291; Add Second Week";
+      clearWeekData("w2");
+      document.getElementById("w2_weekEnding").value = "";
+    }
+
+    // Clear correction
+    document.getElementById("correctionToggle").checked = false;
+    document.getElementById("correctionFields").classList.remove("open");
+    document.getElementById("corrWeekEnding").value = "";
+    document.getElementById("corrDay").value = "";
+    document.getElementById("corrStartH").value = "";
+    document.getElementById("corrStartM").value = "";
+    document.getElementById("corrEndH").value = "";
+    document.getElementById("corrEndM").value = "";
+
+    var btn = document.getElementById("confirmBtn");
     btn.disabled = false;
     btn.textContent = "Confirm & Submit";
+    submitTimedOut = false;
     window.scrollTo(0, 0);
   }
 
-  buildDayCards();
+  // ── Init ──
+  buildDayCards("w1", "w1_dayCards");
+  buildDayCards("w2", "w2_dayCards");
+  buildCorrectionPickers();
 </script>
 </body>
 </html>
