@@ -418,7 +418,7 @@
           </select>
           <input type="text" id="staffNameFallback" placeholder="Type your name"
                  style="width:100%;padding:10px 12px;border:1.5px solid #DDD;border-radius:6px;font-size:16px;">
-          <p id="nameError" style="display:none;color:#C62828;font-size:12px;margin-top:4px;">Could not load staff list. Type your name instead.</p>
+          <p id="nameError" style="display:none;color:#888;font-size:12px;margin-top:4px;">Staff list loading slowly — just type your name.</p>
         </div>
         <div class="field">
           <label for="weekEnding">Week Ending (Sunday)</label>
@@ -1467,14 +1467,14 @@
     };
     document.body.appendChild(script);
 
-    // Timeout fallback — if JSONP doesn't respond in 5 seconds, show text input
+    // Timeout fallback — if JSONP doesn't respond in 10 seconds, show text input
     setTimeout(function() {
       if (!staffNamesLoaded) {
         document.getElementById("staffName").style.display = "none";
         document.getElementById("staffNameFallback").style.display = "";
         document.getElementById("nameError").style.display = "block";
       }
-    }, 5000);
+    }, 10000);
   }
 
   // ── Init ──
