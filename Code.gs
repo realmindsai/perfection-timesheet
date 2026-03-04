@@ -11,6 +11,15 @@
  * 6. Copy the deployment URL and paste it into the form's SCRIPT_URL
  */
 
+/**
+ * Run this once to grant email permission. Select this function and click Run.
+ */
+function authoriseEmail() {
+  MailApp.getRemainingDailyQuota();
+  SpreadsheetApp.getActiveSpreadsheet();
+  Logger.log("Permissions OK — email quota remaining: " + MailApp.getRemainingDailyQuota());
+}
+
 const SHEET_NAME = "Timesheet Responses";
 const SUMMARY_SHEET = "Pay Summary";
 const FORTNIGHT_SHEET = "Fortnight Summary";
@@ -65,13 +74,14 @@ function doPost(e) {
       result = processV1(formData);
     }
 
-    return ContentService
-      .createTextOutput(JSON.stringify(result))
-      .setMimeType(ContentService.MimeType.JSON);
+    // Return HTML page that signals success to parent window via postMessage
+    const successHtml = '<html><body><script>parent.postMessage(' + JSON.stringify(result) + ', "*");<\/script></body></html>';
+    return HtmlService.createHtmlOutput(successHtml)
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   } catch (err) {
-    return ContentService
-      .createTextOutput(JSON.stringify({ success: false, error: err.message }))
-      .setMimeType(ContentService.MimeType.JSON);
+    const errorHtml = '<html><body><script>parent.postMessage({"success":false,"error":"' + err.message.replace(/"/g, '\\"') + '"}, "*");<\/script></body></html>';
+    return HtmlService.createHtmlOutput(errorHtml)
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
 }
 

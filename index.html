@@ -1284,6 +1284,22 @@
 
     var payload = buildPayload();
 
+    // Listen for postMessage from the backend (same approach as staff name loading)
+    var messageHandler = function(event) {
+      if (submitTimedOut) return;
+      if (event.data && typeof event.data === "object" && "success" in event.data) {
+        submitTimedOut = true;
+        window.removeEventListener("message", messageHandler);
+        try { document.body.removeChild(form); } catch(e) {}
+        if (event.data.success) {
+          onSuccess(payload);
+        } else {
+          onWarning();
+        }
+      }
+    };
+    window.addEventListener("message", messageHandler);
+
     var form = document.createElement("form");
     form.method = "POST";
     form.action = SCRIPT_URL;
@@ -1297,23 +1313,16 @@
     form.appendChild(input);
     document.body.appendChild(form);
 
-    var iframe = document.getElementById("submitFrame");
-    iframe.onload = function() {
-      if (submitTimedOut) return; // timeout already fired, ignore late load
-      submitTimedOut = true; // prevent timeout from also firing
-      try { document.body.removeChild(form); } catch(e) {}
-      onSuccess(payload);
-    };
-
     form.submit();
 
     setTimeout(function() {
       if (!submitTimedOut) {
         submitTimedOut = true;
+        window.removeEventListener("message", messageHandler);
         try { document.body.removeChild(form); } catch(e) {}
         onWarning();
       }
-    }, 15000);
+    }, 20000);
   }
 
   function onSuccess(payload) {
