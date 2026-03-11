@@ -586,12 +586,6 @@
           <label for="generalNotes">General notes (optional)</label>
           <textarea id="generalNotes" placeholder="Travel, equipment, issues..."></textarea>
         </div>
-        <div class="field">
-          <label for="copyEmail">Send me a copy (optional)</label>
-          <input type="email" id="copyEmail" placeholder="your@email.com"
-                 style="width:100%;padding:10px 12px;border:1.5px solid #DDD;border-radius:6px;font-size:14px;">
-          <p style="font-size:11px;color:#888;margin:4px 0 0;">You'll get a confirmation email with your submitted hours.</p>
-        </div>
       </div>
 
       <div style="display:flex;gap:12px;margin-top:8px;">
@@ -1384,9 +1378,8 @@
     // Notes preview
     var unavail = document.getElementById("unavailableDays").value.trim();
     var notes = document.getElementById("generalNotes").value.trim();
-    var copyEmail = document.getElementById("copyEmail").value.trim();
     var notesSection = document.getElementById("prevNotesSection");
-    if (unavail || notes || copyEmail) {
+    if (unavail || notes) {
       notesSection.style.display = "block";
       var html = "";
       if (unavail) {
@@ -1394,9 +1387,6 @@
       }
       if (notes) {
         html += '<div class="preview-row"><span class="pr-label">Notes</span><span class="pr-value">' + notes + '</span></div>';
-      }
-      if (copyEmail) {
-        html += '<div class="preview-row"><span class="pr-label">Copy to</span><span class="pr-value">' + copyEmail + '</span></div>';
       }
       document.getElementById("prevNotesDetails").innerHTML = html;
     } else {
@@ -1447,7 +1437,7 @@
       correction: null,
       unavailableDays: document.getElementById("unavailableDays").value.trim() || "",
       generalNotes: document.getElementById("generalNotes").value.trim() || "",
-      copyEmail: document.getElementById("copyEmail").value.trim() || ""
+      copyEmail: staffName
     };
 
     if (week2Active) {
@@ -1594,7 +1584,6 @@
     document.getElementById("weekEnding").value = "";
     document.getElementById("unavailableDays").value = "";
     document.getElementById("generalNotes").value = "";
-    document.getElementById("copyEmail").value = "";
 
     // Clear week 1
     clearWeekData("w1");
