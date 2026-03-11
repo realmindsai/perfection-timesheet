@@ -26,8 +26,8 @@ const FORTNIGHT_SHEET = "Fortnight Summary";
 const STAFF_SHEET = "Staff List";
 const SETTINGS_SHEET = "Settings";
 
-const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
-const DAYS_TITLE = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const DAYS = ["fri", "sat", "sun", "mon", "tue", "wed", "thu"];
+const DAYS_TITLE = ["Fri", "Sat", "Sun", "Mon", "Tue", "Wed", "Thu"];
 
 /**
  * Handles GET requests — returns staff names as JSON
@@ -863,7 +863,7 @@ function groupIntoFortnights(personWeeks, cycleStart) {
 
   for (const week of personWeeks) {
     const weekEndDate = parseWeekEnding(week.weekEnding);
-    // Week start is 6 days before week ending (Mon for a Sun week-ending)
+    // Week start is 6 days before week ending (Fri for a Thu week-ending)
     const weekStartDate = new Date(weekEndDate);
     weekStartDate.setDate(weekStartDate.getDate() - 6);
 

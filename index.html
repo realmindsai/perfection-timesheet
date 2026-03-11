@@ -407,17 +407,19 @@
 
   <div class="container">
     <div id="errorBanner" class="error-banner"></div>
+    <div id="draftStatus" style="text-align:center;font-size:12px;color:var(--green);padding:4px;opacity:0;transition:opacity 0.3s;"></div>
 
     <!-- ── FORM VIEW ── -->
     <div id="formView">
       <div class="section">
         <div class="field">
           <label for="staffName">Your Name</label>
-          <select id="staffName" required style="display:none;">
+          <select id="staffName" required style="display:none;" onchange="onStaffOrWeekChange()">
             <option value="">Loading names...</option>
           </select>
           <input type="text" id="staffNameFallback" placeholder="Type your name"
-                 style="width:100%;padding:10px 12px;border:1.5px solid #DDD;border-radius:6px;font-size:16px;">
+                 style="width:100%;padding:10px 12px;border:1.5px solid #DDD;border-radius:6px;font-size:16px;"
+                 onchange="onStaffOrWeekChange()">
           <p id="nameError" style="display:none;color:#888;font-size:12px;margin-top:4px;">Staff list loading slowly — just type your name.</p>
         </div>
       </div>
@@ -425,7 +427,7 @@
       <div class="section-title">Week 1</div>
       <div class="section">
         <div class="field">
-          <label for="weekEnding">Week Ending (Sunday)</label>
+          <label for="weekEnding">Week Ending (Thursday)</label>
           <input type="date" id="weekEnding" required onchange="onWeekEndingChange()">
         </div>
       </div>
@@ -480,7 +482,7 @@
         <div class="section-title">Week 2</div>
         <div class="section">
           <div class="field">
-            <label for="w2_weekEnding">Week Ending (Sunday)</label>
+            <label for="w2_weekEnding">Week Ending (Thursday)</label>
             <input type="date" id="w2_weekEnding">
           </div>
         </div>
@@ -534,19 +536,19 @@
         <div class="correction-fields" id="correctionFields">
           <div class="field">
             <label for="corrWeekEnding">Week ending to correct</label>
-            <input type="date" id="corrWeekEnding" onchange="this.value = this.value ? snapToSunday(this.value) : ''">
+            <input type="date" id="corrWeekEnding" onchange="this.value = this.value ? snapToThursday(this.value) : ''">
           </div>
           <div class="field">
             <label for="corrDay">Day to correct</label>
             <select id="corrDay">
               <option value="">Select day</option>
+              <option value="fri">Friday</option>
+              <option value="sat">Saturday</option>
+              <option value="sun">Sunday</option>
               <option value="mon">Monday</option>
               <option value="tue">Tuesday</option>
               <option value="wed">Wednesday</option>
               <option value="thu">Thursday</option>
-              <option value="fri">Friday</option>
-              <option value="sat">Saturday</option>
-              <option value="sun">Sunday</option>
             </select>
           </div>
           <div class="time-row">
@@ -698,13 +700,13 @@
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwSDR1H2vsaBJSOKD-sFUgXa8mNXwRDdNCXKJa6MKAFQ_FlRFB_0yFhm31T4JHDD3FQ/exec";
 
   const DAYS = [
+    { key: "fri", name: "Friday" },
+    { key: "sat", name: "Saturday" },
+    { key: "sun", name: "Sunday" },
     { key: "mon", name: "Monday" },
     { key: "tue", name: "Tuesday" },
     { key: "wed", name: "Wednesday" },
-    { key: "thu", name: "Thursday" },
-    { key: "fri", name: "Friday" },
-    { key: "sat", name: "Saturday" },
-    { key: "sun", name: "Sunday" }
+    { key: "thu", name: "Thursday" }
   ];
 
   const HOURS = [];
@@ -722,6 +724,90 @@
 
   let week2Active = false;
   let submitTimedOut = false;
+
+  // ── Draft storage (localStorage) ──
+  // Saves each day's hours as they're entered so staff can fill in daily
+  // and submit at end of period. Keyed by staff name + week ending.
+
+  function getDraftKey(staffName, weekEnding, prefix) {
+    return "perfection_draft_" + staffName + "_" + weekEnding + "_" + prefix;
+  }
+
+  function saveDraft(prefix) {
+    var staffName = getStaffName();
+    var weekEndingId = prefix === "w1" ? "weekEnding" : "w2_weekEnding";
+    var weekEnding = document.getElementById(weekEndingId).value;
+    if (!staffName || !weekEnding) return;
+
+    var draft = {};
+    DAYS.forEach(function(day) {
+      draft[day.key] = {
+        startH: document.getElementById(prefix + "_" + day.key + "StartH").value,
+        startM: document.getElementById(prefix + "_" + day.key + "StartM").value,
+        endH: document.getElementById(prefix + "_" + day.key + "EndH").value,
+        endM: document.getElementById(prefix + "_" + day.key + "EndM").value,
+        notes: document.getElementById(prefix + "_" + day.key + "Notes").value
+      };
+    });
+    draft.highRiskHours = document.getElementById(prefix + "_highRiskHours").value;
+    draft.isEstimate = document.getElementById(prefix + "_isEstimate").checked;
+
+    try {
+      localStorage.setItem(getDraftKey(staffName, weekEnding, prefix), JSON.stringify(draft));
+      showDraftStatus("Draft saved");
+    } catch(e) {}
+  }
+
+  function loadDraft(prefix) {
+    var staffName = getStaffName();
+    var weekEndingId = prefix === "w1" ? "weekEnding" : "w2_weekEnding";
+    var weekEnding = document.getElementById(weekEndingId).value;
+    if (!staffName || !weekEnding) return false;
+
+    var key = getDraftKey(staffName, weekEnding, prefix);
+    var raw;
+    try { raw = localStorage.getItem(key); } catch(e) { return false; }
+    if (!raw) return false;
+
+    var draft = JSON.parse(raw);
+    DAYS.forEach(function(day) {
+      var d = draft[day.key];
+      if (!d) return;
+      document.getElementById(prefix + "_" + day.key + "StartH").value = d.startH || "";
+      document.getElementById(prefix + "_" + day.key + "StartM").value = d.startM || "";
+      document.getElementById(prefix + "_" + day.key + "EndH").value = d.endH || "";
+      document.getElementById(prefix + "_" + day.key + "EndM").value = d.endM || "";
+      document.getElementById(prefix + "_" + day.key + "Notes").value = d.notes || "";
+      calcDay(prefix, day.key);
+    });
+    if (draft.highRiskHours) document.getElementById(prefix + "_highRiskHours").value = draft.highRiskHours;
+    if (draft.isEstimate) document.getElementById(prefix + "_isEstimate").checked = true;
+
+    showDraftStatus("Draft loaded");
+    return true;
+  }
+
+  function clearDraftStorage(prefix) {
+    var staffName = getStaffName();
+    var weekEndingId = prefix === "w1" ? "weekEnding" : "w2_weekEnding";
+    var weekEnding = document.getElementById(weekEndingId).value;
+    if (!staffName || !weekEnding) return;
+    try { localStorage.removeItem(getDraftKey(staffName, weekEnding, prefix)); } catch(e) {}
+  }
+
+  function showDraftStatus(msg) {
+    var el = document.getElementById("draftStatus");
+    if (!el) return;
+    el.textContent = msg;
+    el.style.opacity = "1";
+    setTimeout(function() { el.style.opacity = "0"; }, 2000);
+  }
+
+  // Try to load draft when staff name or week ending changes
+  function onStaffOrWeekChange() {
+    loadDraft("w1");
+    if (week2Active) loadDraft("w2");
+  }
 
   // ── Utility ──
 
@@ -798,13 +884,13 @@
           '</div>' +
           '<div class="day-notes">' +
             '<label>Notes</label>' +
-            '<input type="text" id="' + prefix + '_' + day.key + 'Notes" placeholder="Optional">' +
+            '<input type="text" id="' + prefix + '_' + day.key + 'Notes" placeholder="Optional" onchange="saveDraft(\'' + prefix + '\')">' +
           '</div>' +
         '</div>';
       container.appendChild(card);
     });
-    // Open Monday by default
-    document.getElementById(prefix + "_body-mon").classList.add("open");
+    // Open Friday by default (first day of the pay cycle)
+    document.getElementById(prefix + "_body-fri").classList.add("open");
   }
 
   function toggleDay(prefix, key) {
@@ -820,6 +906,7 @@
     var dayKey = rest.replace(/(Start|End)(H|M)$/, "");
     clearDayError(prefix, dayKey);
     calcDay(prefix, dayKey);
+    saveDraft(prefix);
   }
 
   function getTime(prefix, dayKey, which) {
@@ -961,12 +1048,14 @@
     }
   }
 
-  // Snap a date string to the nearest Sunday (forward if not already Sunday)
-  function snapToSunday(dateStr) {
+  // Snap a date string to the nearest Thursday (forward if not already Thursday)
+  function snapToThursday(dateStr) {
     var d = new Date(dateStr + "T00:00:00");
-    var dow = d.getDay(); // 0=Sun, 1=Mon, ...
-    if (dow !== 0) {
-      d.setDate(d.getDate() + (7 - dow));
+    var dow = d.getDay(); // 0=Sun, 1=Mon, ... 4=Thu
+    if (dow !== 4) {
+      var daysUntilThu = (4 - dow + 7) % 7;
+      if (daysUntilThu === 0) daysUntilThu = 7;
+      d.setDate(d.getDate() + daysUntilThu);
     }
     return d.toISOString().split("T")[0];
   }
@@ -974,7 +1063,7 @@
   function onWeekEndingChange() {
     var el = document.getElementById("weekEnding");
     if (el.value) {
-      el.value = snapToSunday(el.value);
+      el.value = snapToThursday(el.value);
     }
     // If week 2 is active, auto-update week 2 ending
     if (week2Active) {
@@ -985,6 +1074,8 @@
         document.getElementById("w2_weekEnding").value = d.toISOString().split("T")[0];
       }
     }
+    // Try to load any saved draft for this week
+    onStaffOrWeekChange();
   }
 
   function clearWeekData(prefix) {
@@ -1326,6 +1417,10 @@
   }
 
   function onSuccess(payload) {
+    // Clear saved drafts on successful submission
+    clearDraftStorage("w1");
+    if (week2Active) clearDraftStorage("w2");
+
     document.getElementById("previewView").style.display = "none";
     document.getElementById("successView").style.display = "block";
     document.getElementById("successName").textContent = payload.staffName;
@@ -1500,14 +1595,15 @@
   buildCorrectionPickers();
   loadStaffNames();
 
-  // Default week ending to next Sunday (or today if already Sunday)
+  // Default week ending to next Thursday (or today if already Thursday)
   (function() {
     var today = new Date();
-    var dow = today.getDay(); // 0=Sun
-    var daysUntilSun = dow === 0 ? 0 : 7 - dow;
-    var nextSun = new Date(today);
-    nextSun.setDate(today.getDate() + daysUntilSun);
-    document.getElementById("weekEnding").value = nextSun.toISOString().split("T")[0];
+    var dow = today.getDay(); // 0=Sun, 4=Thu
+    var daysUntilThu = (4 - dow + 7) % 7;
+    if (daysUntilThu === 0) daysUntilThu = 0; // Today is Thursday — use today
+    var nextThu = new Date(today);
+    nextThu.setDate(today.getDate() + daysUntilThu);
+    document.getElementById("weekEnding").value = nextThu.toISOString().split("T")[0];
   })();
 </script>
 </body>
