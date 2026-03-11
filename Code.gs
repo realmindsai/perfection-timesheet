@@ -370,7 +370,8 @@ function sendConfirmationEmail(formData, weekResults) {
   MailApp.sendEmail({
     to: email,
     subject: "Timesheet received — " + name + " (w/e " + (weekResults[0] || {}).weekEnding + ")",
-    body: body
+    body: body,
+    name: "Perfection Services Timesheets"
   });
 }
 
