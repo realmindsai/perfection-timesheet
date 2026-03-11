@@ -214,23 +214,6 @@
       color: var(--orange);
       font-weight: 600;
     }
-    .estimate-field {
-      flex: 1 1 auto;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding-top: 18px;
-    }
-    .estimate-field input[type="checkbox"] {
-      width: 18px;
-      height: 18px;
-      accent-color: var(--purple);
-    }
-    .estimate-field label {
-      margin-bottom: 0;
-      font-size: 14px;
-    }
-
     /* ── Week 2 toggle ── */
     .week2-toggle {
       background: var(--purple-light);
@@ -453,10 +436,6 @@
             <label for="w1_highRiskHours">&#9888; High risk hours (masked up)</label>
             <input type="number" id="w1_highRiskHours" step="0.25" min="0" placeholder="0">
           </div>
-          <div class="estimate-field">
-            <input type="checkbox" id="w1_isEstimate">
-            <label for="w1_isEstimate">These hours include estimates</label>
-          </div>
         </div>
       </div>
 
@@ -506,10 +485,6 @@
             <div class="high-risk-field">
               <label for="w2_highRiskHours">&#9888; High risk hours (masked up)</label>
               <input type="number" id="w2_highRiskHours" step="0.25" min="0" placeholder="0">
-            </div>
-            <div class="estimate-field">
-              <input type="checkbox" id="w2_isEstimate">
-              <label for="w2_isEstimate">These hours include estimates</label>
             </div>
           </div>
         </div>
@@ -644,7 +619,6 @@
             <span class="pr-value high-risk" id="prevW1HR"></span>
           </div>
         </div>
-        <div class="preview-note" id="prevW1EstNote" style="display:none;">(includes estimates)</div>
       </div>
 
       <!-- Week 2 preview (hidden unless week 2 active) -->
@@ -676,7 +650,6 @@
               <span class="pr-value high-risk" id="prevW2HR"></span>
             </div>
           </div>
-          <div class="preview-note" id="prevW2EstNote" style="display:none;">(includes estimates)</div>
         </div>
       </div>
 
@@ -771,7 +744,6 @@
       };
     });
     draft.highRiskHours = document.getElementById(prefix + "_highRiskHours").value;
-    draft.isEstimate = document.getElementById(prefix + "_isEstimate").checked;
 
     try {
       localStorage.setItem(getDraftKey(staffName, weekEnding, prefix), JSON.stringify(draft));
@@ -802,7 +774,6 @@
       calcDay(prefix, day.key);
     });
     if (draft.highRiskHours) document.getElementById(prefix + "_highRiskHours").value = draft.highRiskHours;
-    if (draft.isEstimate) document.getElementById(prefix + "_isEstimate").checked = true;
 
     showDraftStatus("Draft loaded");
     return true;
@@ -1036,6 +1007,17 @@
     });
   }
 
+  function showDayError(prefix, key, msg) {
+    var card = document.getElementById(prefix + "_card-" + key);
+    card.classList.add("has-error");
+    ["EndH", "EndM"].forEach(function(suffix) {
+      document.getElementById(prefix + "_" + key + suffix).classList.add("error");
+    });
+    document.getElementById(prefix + "_body-" + key).classList.add("open");
+    var summary = document.getElementById(prefix + "_summary-" + key);
+    summary.textContent = msg;
+  }
+
   function markDayError(prefix, key) {
     var card = document.getElementById(prefix + "_card-" + key);
     card.classList.add("has-error");
@@ -1066,7 +1048,15 @@
     var sparts = start.split(":").map(Number);
     var eparts = end.split(":").map(Number);
     var raw = (eparts[0] * 60 + eparts[1] - sparts[0] * 60 - sparts[1]) / 60;
-    if (raw < 0) raw += 24;
+    if (raw <= 0) {
+      calcRow.style.display = "none";
+      card.classList.add("has-error");
+      card.classList.remove("has-data");
+      summary.textContent = "End time must be after start time";
+      showDayError(prefix, key, "End time must be after start time");
+      updateTotals(prefix);
+      return;
+    }
 
     var worked = raw;
     if (raw > 5) worked = raw - 0.5;
@@ -1098,7 +1088,7 @@
       var sp = start.split(":").map(Number);
       var ep = end.split(":").map(Number);
       var raw = (ep[0] * 60 + ep[1] - sp[0] * 60 - sp[1]) / 60;
-      if (raw < 0) raw += 24;
+      if (raw <= 0) return; // skip invalid entries
 
       totalRaw += raw;
       var worked = raw;
@@ -1186,7 +1176,6 @@
     document.getElementById(prefix + "_totalOrd").textContent = "0.00";
     document.getElementById(prefix + "_totalOT").textContent = "0.00";
     document.getElementById(prefix + "_highRiskHours").value = "";
-    document.getElementById(prefix + "_isEstimate").checked = false;
   }
 
   // ── Correction toggle ──
@@ -1326,9 +1315,6 @@
       hrRow.style.display = "none";
     }
 
-    // Estimate note
-    var isEst = document.getElementById(prefix + "_isEstimate").checked;
-    document.getElementById(totalsPrefix + "EstNote").style.display = isEst ? "block" : "none";
   }
 
   // ── Preview step ──
@@ -1409,7 +1395,7 @@
   function buildWeekPayload(prefix, weekEndingValue) {
     var week = {
       weekEnding: weekEndingValue,
-      isEstimate: document.getElementById(prefix + "_isEstimate").checked,
+      isEstimate: false,
       highRiskHours: parseFloat(document.getElementById(prefix + "_highRiskHours").value) || 0
     };
 
@@ -1525,10 +1511,6 @@
     if (w1HR > 0) {
       html += '<dt>High Risk Hours</dt><dd>' + w1HR.toFixed(2) + ' hrs</dd>';
     }
-    if (w1.isEstimate) {
-      html += '<dd style="font-size:13px;color:#666;font-style:italic;margin-top:-4px;">(includes estimates)</dd>';
-    }
-
     if (payload.weeks.length > 1) {
       var w2 = payload.weeks[1];
       var w2Ord = parseFloat(document.getElementById("w2_totalOrd").textContent);
@@ -1541,9 +1523,6 @@
 
       if (w2HR > 0) {
         html += '<dt>High Risk Hours</dt><dd>' + w2HR.toFixed(2) + ' hrs</dd>';
-      }
-      if (w2.isEstimate) {
-        html += '<dd style="font-size:13px;color:#666;font-style:italic;margin-top:-4px;">(includes estimates)</dd>';
       }
     }
 
