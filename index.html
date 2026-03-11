@@ -411,13 +411,27 @@
 
     <!-- ── FORM VIEW ── -->
     <div id="formView">
-      <div class="section">
+      <!-- Email gate: enter email + Start Timesheet to reveal the form -->
+      <div class="section" id="emailGateSection">
         <div class="field">
           <label for="staffEmail">Your Email Address</label>
           <input type="email" id="staffEmail" placeholder="you@example.com"
-                 style="width:100%;padding:10px 12px;border:1.5px solid #DDD;border-radius:6px;font-size:16px;"
-                 onchange="onStaffOrWeekChange()">
+                 style="width:100%;padding:10px 12px;border:1.5px solid #DDD;border-radius:6px;font-size:16px;">
           <p style="font-size:11px;color:#888;margin:4px 0 0;">Must match the email Paul has on file.</p>
+        </div>
+        <button class="submit-btn" onclick="startTimesheet()" id="startBtn">Start Timesheet</button>
+      </div>
+
+      <!-- Shown after Start Timesheet -->
+      <div id="timesheetBody" style="display:none;">
+
+      <div class="section" id="loggedInSection" style="display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-size:12px;color:#666;text-transform:uppercase;">Entering hours as</div>
+            <div style="font-size:18px;font-weight:600;color:var(--purple);" id="staffEmailDisplay"></div>
+          </div>
+          <button onclick="changeEmail()" style="background:none;border:1.5px solid #DDD;border-radius:6px;padding:6px 12px;font-size:13px;color:#666;cursor:pointer;">Change</button>
         </div>
       </div>
 
@@ -581,7 +595,8 @@
       </div>
 
       <button class="submit-btn" id="reviewBtn" onclick="showPreview()">Review &amp; Submit</button>
-    </div>
+    </div><!-- end timesheetBody -->
+    </div><!-- end formView -->
 
     <!-- ── PREVIEW VIEW ── -->
     <div id="previewView" style="display:none;">
@@ -797,6 +812,28 @@
     el.textContent = msg;
     el.style.opacity = "1";
     setTimeout(function() { el.style.opacity = "0"; }, 2000);
+  }
+
+  // Start Timesheet: validate email, show the form
+  function startTimesheet() {
+    var email = document.getElementById("staffEmail").value.trim();
+    if (!email || !email.includes("@")) {
+      showError("Please enter a valid email address.");
+      return;
+    }
+    document.getElementById("emailGateSection").style.display = "none";
+    document.getElementById("loggedInSection").style.display = "block";
+    document.getElementById("staffEmailDisplay").textContent = email;
+    document.getElementById("timesheetBody").style.display = "block";
+    onStaffOrWeekChange();
+  }
+
+  // Change email: go back to the gate
+  function changeEmail() {
+    document.getElementById("timesheetBody").style.display = "none";
+    document.getElementById("loggedInSection").style.display = "none";
+    document.getElementById("emailGateSection").style.display = "block";
+    document.getElementById("staffEmail").focus();
   }
 
   // Try to load draft when staff name or week ending changes
