@@ -594,9 +594,25 @@
         </div>
       </div>
 
-      <button class="submit-btn" id="reviewBtn" onclick="showPreview()">Review &amp; Submit</button>
+      <div style="display:flex;gap:12px;margin-top:8px;">
+        <button class="submit-btn" id="reviewBtn" onclick="showPreview()" style="flex:1;">Review &amp; Submit</button>
+        <button class="submit-btn" id="saveDraftBtn" onclick="showDraftSaved()" style="flex:1;background:#607D8B;">Save Draft</button>
+      </div>
     </div><!-- end timesheetBody -->
     </div><!-- end formView -->
+
+    <!-- ── DRAFT SAVED VIEW ── -->
+    <div class="success-msg" id="draftSavedView">
+      <div class="tick" style="color:#607D8B;">&#128190;</div>
+      <h2 style="color:#607D8B;">Draft Saved</h2>
+      <div class="summary">
+        <dl id="draftDetails"></dl>
+      </div>
+      <p style="font-size:13px;color:#666;margin-top:12px;line-height:1.5;">
+        Your hours are saved on this device. When you come back, enter your email and tap <strong>Start Timesheet</strong> — your entries will be restored automatically.
+      </p>
+      <button class="another-btn" onclick="returnFromDraft()">Back to Timesheet</button>
+    </div>
 
     <!-- ── PREVIEW VIEW ── -->
     <div id="previewView" style="display:none;">
@@ -812,6 +828,53 @@
     el.textContent = msg;
     el.style.opacity = "1";
     setTimeout(function() { el.style.opacity = "0"; }, 2000);
+  }
+
+  // Save Draft button — saves and shows summary
+  function showDraftSaved() {
+    saveDraft("w1");
+    if (week2Active) saveDraft("w2");
+
+    // Build summary of what's saved
+    var html = "";
+    var weekEnding = document.getElementById("weekEnding").value;
+    if (weekEnding) {
+      html += "<dt>Week Ending</dt><dd>" + fmtDate(weekEnding) + "</dd>";
+    }
+
+    var daysWithHours = [];
+    var totalOrd = 0;
+    var totalOT = 0;
+    DAYS.forEach(function(day) {
+      var start = getTime("w1", day.key, "Start");
+      var end = getTime("w1", day.key, "End");
+      if (start && end) {
+        daysWithHours.push(day.name);
+        var ordEl = document.getElementById("w1_" + day.key + "_ordinary");
+        var otEl = document.getElementById("w1_" + day.key + "_overtime");
+        if (ordEl) totalOrd += parseFloat(ordEl.textContent) || 0;
+        if (otEl) totalOT += parseFloat(otEl.textContent) || 0;
+      }
+    });
+
+    if (daysWithHours.length > 0) {
+      html += "<dt>Days Entered</dt><dd>" + daysWithHours.join(", ") + "</dd>";
+      html += "<dt>Ordinary Hours</dt><dd>" + totalOrd.toFixed(2) + " hrs</dd>";
+      if (totalOT > 0) {
+        html += "<dt>Overtime Hours</dt><dd>" + totalOT.toFixed(2) + " hrs</dd>";
+      }
+    } else {
+      html += "<dt>Days Entered</dt><dd>None yet</dd>";
+    }
+
+    document.getElementById("draftDetails").innerHTML = html;
+    document.getElementById("formView").style.display = "none";
+    document.getElementById("draftSavedView").style.display = "block";
+  }
+
+  function returnFromDraft() {
+    document.getElementById("draftSavedView").style.display = "none";
+    document.getElementById("formView").style.display = "block";
   }
 
   // Start Timesheet: validate email, show the form
@@ -1526,6 +1589,7 @@
     document.getElementById("successView").style.display = "none";
     document.getElementById("previewView").style.display = "none";
     document.getElementById("warningView").style.display = "none";
+    document.getElementById("draftSavedView").style.display = "none";
     // Keep the authenticated name — don't reset auth on "Submit Another"
     document.getElementById("weekEnding").value = "";
     document.getElementById("unavailableDays").value = "";
