@@ -1564,55 +1564,86 @@
       document.getElementById("authError").style.display = "block";
       return;
     }
-    // Redirect to Apps Script for validation — it will redirect back with name + token
+
     var btn = document.getElementById("authBtn");
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span>Checking...';
-    window.location.href = SCRIPT_URL + "?action=auth&email=" + encodeURIComponent(email);
+    document.getElementById("authError").style.display = "none";
+
+    // Listen for postMessage response from Apps Script
+    var authHandler = function(event) {
+      if (!event.data || event.data.action !== "auth") return;
+      window.removeEventListener("message", authHandler);
+
+      if (event.data.success) {
+        authenticated = true;
+        document.getElementById("staffName").value = event.data.name;
+        document.getElementById("staffNameDisplay").textContent = event.data.name;
+        document.getElementById("authToken").value = event.data.token;
+        document.getElementById("emailAuthSection").style.display = "none";
+        document.getElementById("nameSection").style.display = "block";
+
+        if (event.data.we) {
+          document.getElementById("weekEnding").value = event.data.we;
+        }
+
+        // Save email for next time
+        try { localStorage.setItem("perfection_email", email); } catch(e) {}
+
+        onStaffOrWeekChange();
+      } else {
+        document.getElementById("authError").textContent = "Email not recognised. Check with Paul if you need to be added.";
+        document.getElementById("authError").style.display = "block";
+        btn.disabled = false;
+        btn.textContent = "Start Timesheet";
+      }
+      try { document.body.removeChild(form); } catch(e) {}
+    };
+    window.addEventListener("message", authHandler);
+
+    // POST email via hidden form + iframe (same pattern as timesheet submission)
+    var form = document.createElement("form");
+    form.method = "POST";
+    form.action = SCRIPT_URL;
+    form.target = "submitFrame";
+    form.style.display = "none";
+
+    var input = document.createElement("input");
+    input.type = "hidden";
+    input.name = "data";
+    input.value = JSON.stringify({ action: "auth", email: email });
+    form.appendChild(input);
+    document.body.appendChild(form);
+    form.submit();
+
+    // Timeout
+    setTimeout(function() {
+      window.removeEventListener("message", authHandler);
+      if (!authenticated) {
+        document.getElementById("authError").textContent = "Connection timed out. Please try again.";
+        document.getElementById("authError").style.display = "block";
+        btn.disabled = false;
+        btn.textContent = "Start Timesheet";
+      }
+      try { document.body.removeChild(form); } catch(e) {}
+    }, 20000);
   }
 
   function logout() {
-    // Clear auth and show email input
     resetStaffName();
+    authenticated = false;
     document.getElementById("emailAuthSection").style.display = "block";
     document.getElementById("nameSection").style.display = "none";
     document.getElementById("authEmail").value = "";
-    // Clear URL params
-    window.history.replaceState({}, "", window.location.pathname);
+    try { localStorage.removeItem("perfection_email"); } catch(e) {}
   }
 
-  function checkAuthFromUrl() {
-    var params = new URLSearchParams(window.location.search);
-
-    // Check for auth error
-    if (params.get("error") === "not_found") {
-      document.getElementById("authError").textContent = "Email not recognised. Check with Paul if you need to be added.";
-      document.getElementById("authError").style.display = "block";
-      window.history.replaceState({}, "", window.location.pathname);
-      return;
-    }
-
-    // Check for successful auth
-    var name = params.get("name");
-    var token = params.get("token");
-    var we = params.get("we");
-
-    if (name && token) {
-      authenticated = true;
-      document.getElementById("staffName").value = name;
-      document.getElementById("staffNameDisplay").textContent = name;
-      document.getElementById("authToken").value = token;
-      document.getElementById("emailAuthSection").style.display = "none";
-      document.getElementById("nameSection").style.display = "block";
-
-      // Set week ending from URL
-      if (we) {
-        document.getElementById("weekEnding").value = we;
-      }
-
-      // Try to load draft
-      onStaffOrWeekChange();
-    }
+  // Auto-fill email from last session
+  function restoreSavedEmail() {
+    try {
+      var saved = localStorage.getItem("perfection_email");
+      if (saved) document.getElementById("authEmail").value = saved;
+    } catch(e) {}
   }
 
   // ── Init ──
@@ -1631,8 +1662,8 @@
     document.getElementById("weekEnding").value = nextThu.toISOString().split("T")[0];
   })();
 
-  // Check if returning from email auth redirect
-  checkAuthFromUrl();
+  // Restore saved email from last session
+  restoreSavedEmail();
 </script>
 </body>
 </html>
