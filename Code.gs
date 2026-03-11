@@ -154,38 +154,15 @@ function doPost(e) {
       throw new Error("No data received");
     }
 
-    // Email auth request — validate email and return name + token via postMessage
-    if (formData.action === "auth") {
-      var email = (formData.email || "").toLowerCase().trim();
+    // Resolve email to staff name
+    if (formData.staffEmail) {
+      var email = formData.staffEmail.toLowerCase().trim();
       var staff = getStaffList();
       var match = staff.filter(function(s) { return s.email.toLowerCase().trim() === email; })[0];
-
       if (!match) {
-        var errHtml = '<html><body><script>parent.postMessage({"action":"auth","success":false,"error":"not_found"}, "*");<\/script></body></html>';
-        return HtmlService.createHtmlOutput(errHtml).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+        throw new Error("Email not recognised. Check with Paul if you need to be added.");
       }
-
-      // Calculate current week ending (next Thursday)
-      var today = new Date();
-      var dow = today.getDay();
-      var daysUntilThu = (4 - dow + 7) % 7;
-      var weekEnding = new Date(today);
-      weekEnding.setDate(today.getDate() + daysUntilThu);
-      var weStr = Utilities.formatDate(weekEnding, Session.getScriptTimeZone(), "yyyy-MM-dd");
-      var token = generateToken(email, weStr);
-
-      var authResult = JSON.stringify({ action: "auth", success: true, name: match.name, token: token, we: weStr });
-      var authHtml = '<html><body><script>parent.postMessage(' + authResult + ', "*");<\/script></body></html>';
-      return HtmlService.createHtmlOutput(authHtml).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-    }
-
-    // Validate token if provided (prevents name tampering)
-    if (formData.token && formData.weekEnding) {
-      var validName = validateToken(formData.token, formData.weekEnding);
-      if (!validName) {
-        throw new Error("Invalid or expired token. Please re-enter your email.");
-      }
-      formData.staffName = validName;
+      formData.staffName = match.name;
     }
 
     let result;

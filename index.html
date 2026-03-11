@@ -411,28 +411,14 @@
 
     <!-- ── FORM VIEW ── -->
     <div id="formView">
-      <!-- Email auth gate: shown until authenticated -->
-      <div class="section" id="emailAuthSection">
+      <div class="section">
         <div class="field">
-          <label for="authEmail">Your Email Address</label>
-          <input type="email" id="authEmail" placeholder="you@example.com"
-                 style="width:100%;padding:10px 12px;border:1.5px solid #DDD;border-radius:6px;font-size:16px;">
-          <p id="authError" style="display:none;color:#C62828;font-size:13px;margin-top:6px;"></p>
+          <label for="staffEmail">Your Email Address</label>
+          <input type="email" id="staffEmail" placeholder="you@example.com"
+                 style="width:100%;padding:10px 12px;border:1.5px solid #DDD;border-radius:6px;font-size:16px;"
+                 onchange="onStaffOrWeekChange()">
+          <p style="font-size:11px;color:#888;margin:4px 0 0;">Must match the email Paul has on file.</p>
         </div>
-        <button class="submit-btn" onclick="startAuth()" id="authBtn">Start Timesheet</button>
-      </div>
-
-      <!-- Authenticated name display: shown after email validated -->
-      <div class="section" id="nameSection" style="display:none;">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <div>
-            <div style="font-size:12px;color:#666;text-transform:uppercase;">Logged in as</div>
-            <div style="font-size:18px;font-weight:600;color:var(--purple);" id="staffNameDisplay"></div>
-          </div>
-          <button onclick="logout()" style="background:none;border:1.5px solid #DDD;border-radius:6px;padding:6px 12px;font-size:13px;color:#666;cursor:pointer;">Change</button>
-        </div>
-        <input type="hidden" id="staffName" value="">
-        <input type="hidden" id="authToken" value="">
       </div>
 
       <div class="section-title">Week 1</div>
@@ -602,7 +588,7 @@
       <div class="preview-card">
         <h3>Check Your Timesheet</h3>
         <div class="preview-row">
-          <span class="pr-label">Name</span>
+          <span class="pr-label">Email</span>
           <span class="pr-value" id="prevName"></span>
         </div>
         <div class="preview-row">
@@ -1146,7 +1132,7 @@
     var staffName = getStaffName();
     var weekEnding = document.getElementById("weekEnding").value;
 
-    if (!staffName) { showError("Please enter your email to get started."); return false; }
+    if (!staffName || staffName.indexOf("@") === -1) { showError("Please enter your email address."); return false; }
     if (!weekEnding) { showError("Please select the week ending date."); return false; }
 
     // Validate week 1 days
@@ -1351,12 +1337,12 @@
     var staffName = getStaffName();
     var weekEnding = document.getElementById("weekEnding").value;
 
-    var token = document.getElementById("authToken").value;
+    // Save email for next visit
+    try { localStorage.setItem("perfection_email", staffName); } catch(e) {}
 
     var payload = {
       version: 2,
-      staffName: staffName,
-      token: token || "",
+      staffEmail: staffName,
       weekEnding: weekEnding,
       weeks: [buildWeekPayload("w1", weekEnding)],
       correction: null,
@@ -1542,107 +1528,21 @@
     window.scrollTo(0, 0);
   }
 
-  // ── Email auth ──
-
-  var authenticated = false;
+  // ── Staff email ──
 
   function getStaffName() {
-    return document.getElementById("staffName").value;
+    // Email is the identifier now — name resolved server-side on submit
+    return document.getElementById("staffEmail").value.trim();
   }
 
   function resetStaffName() {
-    document.getElementById("staffName").value = "";
-    document.getElementById("staffNameDisplay").textContent = "";
-    document.getElementById("authToken").value = "";
-    authenticated = false;
+    // Keep email between submissions
   }
 
-  function startAuth() {
-    var email = document.getElementById("authEmail").value.trim();
-    if (!email) {
-      document.getElementById("authError").textContent = "Please enter your email address.";
-      document.getElementById("authError").style.display = "block";
-      return;
-    }
-
-    var btn = document.getElementById("authBtn");
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span>Checking...';
-    document.getElementById("authError").style.display = "none";
-
-    // Listen for postMessage response from Apps Script
-    var authHandler = function(event) {
-      if (!event.data || event.data.action !== "auth") return;
-      window.removeEventListener("message", authHandler);
-
-      if (event.data.success) {
-        authenticated = true;
-        document.getElementById("staffName").value = event.data.name;
-        document.getElementById("staffNameDisplay").textContent = event.data.name;
-        document.getElementById("authToken").value = event.data.token;
-        document.getElementById("emailAuthSection").style.display = "none";
-        document.getElementById("nameSection").style.display = "block";
-
-        if (event.data.we) {
-          document.getElementById("weekEnding").value = event.data.we;
-        }
-
-        // Save email for next time
-        try { localStorage.setItem("perfection_email", email); } catch(e) {}
-
-        onStaffOrWeekChange();
-      } else {
-        document.getElementById("authError").textContent = "Email not recognised. Check with Paul if you need to be added.";
-        document.getElementById("authError").style.display = "block";
-        btn.disabled = false;
-        btn.textContent = "Start Timesheet";
-      }
-      try { document.body.removeChild(form); } catch(e) {}
-    };
-    window.addEventListener("message", authHandler);
-
-    // POST email via hidden form + iframe (same pattern as timesheet submission)
-    var form = document.createElement("form");
-    form.method = "POST";
-    form.action = SCRIPT_URL;
-    form.target = "submitFrame";
-    form.style.display = "none";
-
-    var input = document.createElement("input");
-    input.type = "hidden";
-    input.name = "data";
-    input.value = JSON.stringify({ action: "auth", email: email });
-    form.appendChild(input);
-    document.body.appendChild(form);
-    form.submit();
-
-    // Timeout
-    setTimeout(function() {
-      window.removeEventListener("message", authHandler);
-      if (!authenticated) {
-        document.getElementById("authError").textContent = "Connection timed out. Please try again.";
-        document.getElementById("authError").style.display = "block";
-        btn.disabled = false;
-        btn.textContent = "Start Timesheet";
-      }
-      try { document.body.removeChild(form); } catch(e) {}
-    }, 20000);
-  }
-
-  function logout() {
-    resetStaffName();
-    authenticated = false;
-    document.getElementById("emailAuthSection").style.display = "block";
-    document.getElementById("nameSection").style.display = "none";
-    document.getElementById("authEmail").value = "";
-    try { localStorage.removeItem("perfection_email"); } catch(e) {}
-  }
-
-  // Auto-fill email from last session
   function restoreSavedEmail() {
     try {
       var saved = localStorage.getItem("perfection_email");
-      if (saved) document.getElementById("authEmail").value = saved;
+      if (saved) document.getElementById("staffEmail").value = saved;
     } catch(e) {}
   }
 
@@ -1662,7 +1562,7 @@
     document.getElementById("weekEnding").value = nextThu.toISOString().split("T")[0];
   })();
 
-  // Restore saved email from last session
+  // Restore saved email from last visit
   restoreSavedEmail();
 </script>
 </body>
