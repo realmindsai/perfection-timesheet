@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Perfection Services — Timesheet Guide</title>
+<style>
+  @page { size: A4; margin: 20mm 18mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; color: #333; line-height: 1.6; max-width: 210mm; margin: 0 auto; padding: 20mm 18mm; }
+
+  .header { text-align: center; margin-bottom: 32px; padding-bottom: 24px; border-bottom: 3px solid #6B3FA0; }
+  .header h1 { font-size: 28px; color: #6B3FA0; margin-bottom: 4px; }
+  .header .subtitle { font-size: 16px; color: #666; }
+
+  h2 { font-size: 18px; color: #6B3FA0; margin: 28px 0 12px; padding-bottom: 6px; border-bottom: 1.5px solid #E8E0F0; }
+  h3 { font-size: 15px; color: #444; margin: 18px 0 8px; }
+
+  p { margin-bottom: 10px; font-size: 14px; }
+  ul, ol { margin: 8px 0 14px 24px; font-size: 14px; }
+  li { margin-bottom: 6px; }
+
+  .link-box { background: #F5F0FA; border: 1.5px solid #D4C4E8; border-radius: 8px; padding: 16px; margin: 16px 0; }
+  .link-box .label { font-size: 12px; color: #6B3FA0; text-transform: uppercase; font-weight: 600; margin-bottom: 4px; }
+  .link-box .url { font-size: 14px; color: #333; word-break: break-all; }
+
+  .step-grid { display: grid; grid-template-columns: 48px 1fr; gap: 8px 16px; margin: 12px 0 20px; }
+  .step-num { width: 36px; height: 36px; background: #6B3FA0; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; }
+  .step-text { font-size: 14px; padding-top: 6px; }
+
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 20px; font-size: 13px; }
+  th { background: #6B3FA0; color: white; text-align: left; padding: 8px 12px; font-weight: 600; }
+  td { padding: 8px 12px; border-bottom: 1px solid #E8E0F0; }
+  tr:nth-child(even) td { background: #FAFAFA; }
+
+  .callout { background: #FFF8E1; border-left: 4px solid #FFB300; padding: 12px 16px; margin: 16px 0; border-radius: 0 6px 6px 0; font-size: 13px; }
+  .callout strong { color: #E65100; }
+
+  .callout-info { background: #F0F4FF; border-left: 4px solid #6B3FA0; padding: 12px 16px; margin: 16px 0; border-radius: 0 6px 6px 0; font-size: 13px; }
+
+  .footer { margin-top: 40px; padding-top: 16px; border-top: 1.5px solid #E8E0F0; text-align: center; font-size: 11px; color: #999; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Perfection Services Timesheets</h1>
+  <div class="subtitle">Staff Guide</div>
+</div>
+
+<div class="link-box">
+  <div class="label">Timesheet Link</div>
+  <div class="url">https://realmindsai.github.io/perfection-timesheet/</div>
+</div>
+
+<h2>How to Submit Your Timesheet</h2>
+
+<div class="step-grid">
+  <div><div class="step-num">1</div></div>
+  <div class="step-text"><strong>Open the link above</strong> on your phone, tablet, or laptop. No app to install.</div>
+
+  <div><div class="step-num">2</div></div>
+  <div class="step-text"><strong>Enter your email address</strong> and tap <strong>Start Timesheet</strong>. Your email must match the one Paul has on file &mdash; check with him if it doesn't work.</div>
+
+  <div><div class="step-num">3</div></div>
+  <div class="step-text"><strong>Tap a day</strong> to expand it, then enter your <strong>start time</strong> and <strong>end time</strong>. Hours, overtime, and breaks are calculated automatically.</div>
+
+  <div><div class="step-num">4</div></div>
+  <div class="step-text"><strong>Save Draft</strong> any time you like. Your hours are saved on your device. Come back later, enter your email again, and everything is restored right where you left off.</div>
+
+  <div><div class="step-num">5</div></div>
+  <div class="step-text">At the end of the week, tap <strong>Review &amp; Submit</strong>. Check the summary, then <strong>Confirm &amp; Submit</strong>. You'll receive a confirmation email.</div>
+</div>
+
+<h2>Pay Cycle</h2>
+
+<p>You are paid <strong>fortnightly</strong>. Each pay period covers two weeks, running <strong>Friday to Thursday</strong>.</p>
+
+<div class="callout-info">
+  <strong>Example:</strong> The pay period 14 March &ndash; 27 March 2026 covers two weeks:<br>
+  &bull; Week 1: Friday 14 Mar &ndash; Thursday 20 Mar<br>
+  &bull; Week 2: Friday 21 Mar &ndash; Thursday 27 Mar<br><br>
+  Submit each week's hours by end of day Thursday (or as soon as practical after your last shift for the week).
+</div>
+
+<table>
+  <tr><th>Day</th><th>Role in the cycle</th></tr>
+  <tr><td>Friday</td><td>First day of the pay week</td></tr>
+  <tr><td>Thursday</td><td>Last day &mdash; submit your timesheet</td></tr>
+</table>
+
+<h2>What Gets Calculated</h2>
+
+<table>
+  <tr><th>Item</th><th>How it works</th></tr>
+  <tr><td>Raw hours</td><td>End time minus start time</td></tr>
+  <tr><td>Break deduction</td><td>30 minutes deducted automatically if your shift is over 5 hours</td></tr>
+  <tr><td>Ordinary hours</td><td>Up to 8.5 hours per day (after break)</td></tr>
+  <tr><td>Overtime</td><td>Anything over 8.5 hours worked in a day</td></tr>
+  <tr><td>High risk hours</td><td>Enter separately if you worked masked up</td></tr>
+</table>
+
+<h2>Saving Drafts</h2>
+
+<p>You don't have to fill in the whole week at once. Enter your hours each day and they save automatically. You can also tap the <strong>Save Draft</strong> button to see a summary of what you've entered so far.</p>
+
+<div class="callout">
+  <strong>Drafts are saved on your device only.</strong> If you start on your phone, you'll need to finish on the same phone. Drafts won't appear on a different device.
+</div>
+
+<p>When you come back to the app, enter your email and tap <strong>Start Timesheet</strong> &mdash; your saved hours will load automatically.</p>
+
+<h2>Corrections</h2>
+
+<p>Made a mistake on a previous week? Use the <strong>Correction</strong> section at the bottom of the form. Select the week ending date, pick the day, and enter the corrected start and end times. The correction will override that day's hours in Paul's records.</p>
+
+<h2>Upcoming Days Unavailable</h2>
+
+<p>If you know you'll be away during the next pay period, enter it in the <strong>"Upcoming days unavailable"</strong> field before you submit. Paul will see this once your timesheet is submitted.</p>
+
+<h2>Confirmation Email</h2>
+
+<p>Every time you submit, you'll receive an email from <strong>Perfection Services Timesheets</strong> confirming your hours. Keep this for your records. If you don't receive the email, check your spam folder or let Paul know.</p>
+
+<h2>Troubleshooting</h2>
+
+<table>
+  <tr><th>Problem</th><th>Solution</th></tr>
+  <tr><td>"Email not recognised"</td><td>Your email doesn't match Paul's records. Check with Paul.</td></tr>
+  <tr><td>"End time must be after start time"</td><td>Your end time is earlier than your start time. Fix the times.</td></tr>
+  <tr><td>Page looks outdated</td><td>Hard refresh: pull down on mobile, or Cmd+Shift+R on Mac / Ctrl+Shift+R on PC.</td></tr>
+  <tr><td>Draft not loading</td><td>Make sure you're using the same device and entering the same email address.</td></tr>
+  <tr><td>No confirmation email</td><td>Check your spam/junk folder. If it's not there, your submission may not have gone through &mdash; check with Paul.</td></tr>
+</table>
+
+<div class="footer">
+  Perfection Services Timesheets &mdash; Questions? Ask Paul.
+</div>
+
+</body>
+</html>
