@@ -172,14 +172,13 @@ function doPost(e) {
       result = processV1(formData);
     }
 
-    // Return HTML page that signals success to parent window via postMessage
-    const successHtml = '<html><body><script>parent.postMessage(' + JSON.stringify(result) + ', "*");<\/script></body></html>';
-    return HtmlService.createHtmlOutput(successHtml)
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    return ContentService
+      .createTextOutput(JSON.stringify(result))
+      .setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
-    const errorHtml = '<html><body><script>parent.postMessage({"success":false,"error":"' + err.message.replace(/"/g, '\\"') + '"}, "*");<\/script></body></html>';
-    return HtmlService.createHtmlOutput(errorHtml)
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    return ContentService
+      .createTextOutput(JSON.stringify({success: false, error: err.message}))
+      .setMimeType(ContentService.MimeType.JSON);
   }
 }
 

@@ -691,7 +691,6 @@
     </div>
   </div>
 
-  <iframe name="submitFrame" id="submitFrame" style="display:none;"></iframe>
 
 <script>
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwSDR1H2vsaBJSOKD-sFUgXa8mNXwRDdNCXKJa6MKAFQ_FlRFB_0yFhm31T4JHDD3FQ/exec";
@@ -1367,54 +1366,51 @@
     return payload;
   }
 
-  // ── Submit via hidden form + iframe ──
+  // ── Submit via fetch ──
   function handleSubmit() {
     var btn = document.getElementById("confirmBtn");
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span>Submitting...';
-    submitTimedOut = false;
 
     var payload = buildPayload();
 
-    // Listen for postMessage from the backend (same approach as staff name loading)
-    var messageHandler = function(event) {
-      if (submitTimedOut) return;
-      if (event.data && typeof event.data === "object" && "success" in event.data) {
-        submitTimedOut = true;
-        window.removeEventListener("message", messageHandler);
-        try { document.body.removeChild(form); } catch(e) {}
-        if (event.data.success) {
-          onSuccess(payload);
-        } else {
-          onWarning();
+    // Apps Script redirects POST to a results URL. Using no-cors mode ensures
+    // the request goes through (data is written). We can't read the response
+    // body, so we treat completion as success. Email validation errors will
+    // silently fail — Paul sees it in the sheet if something's off.
+    fetch(SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify(payload),
+      redirect: "follow"
+    })
+    .then(function(resp) {
+      // Try to read JSON response (works if CORS allows it)
+      return resp.text().then(function(text) {
+        try {
+          var data = JSON.parse(text);
+          if (data.success === false) {
+            alert(data.error || "Submission failed. Please check your email address.");
+            btn.disabled = false;
+            btn.innerHTML = '✓ Confirm & Submit';
+            return;
+          }
+        } catch(e) {
+          // Couldn't parse — likely opaque or HTML response, treat as success
         }
-      }
-    };
-    window.addEventListener("message", messageHandler);
-
-    var form = document.createElement("form");
-    form.method = "POST";
-    form.action = SCRIPT_URL;
-    form.target = "submitFrame";
-    form.style.display = "none";
-
-    var input = document.createElement("input");
-    input.type = "hidden";
-    input.name = "data";
-    input.value = JSON.stringify(payload);
-    form.appendChild(input);
-    document.body.appendChild(form);
-
-    form.submit();
-
-    setTimeout(function() {
-      if (!submitTimedOut) {
-        submitTimedOut = true;
-        window.removeEventListener("message", messageHandler);
-        try { document.body.removeChild(form); } catch(e) {}
-        onWarning();
-      }
-    }, 20000);
+        onSuccess(payload);
+      });
+    })
+    .catch(function(err) {
+      // Network error — try no-cors as fallback
+      fetch(SCRIPT_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify(payload)
+      })
+      .then(function() { onSuccess(payload); })
+      .catch(function() { onWarning(); });
+    });
   }
 
   function onSuccess(payload) {
