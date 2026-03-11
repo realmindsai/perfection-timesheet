@@ -123,17 +123,23 @@ const DAYS_TITLE = ["Fri", "Sat", "Sun", "Mon", "Tue", "Wed", "Thu"];
 function doGet(e) {
   const action = (e && e.parameter && e.parameter.action) || "";
 
-  // Email authentication: look up email, redirect back with token + name
+  // Email authentication: look up email, return result as a clickable page
+  // (Google sandboxes HtmlService so JS redirects don't work on mobile)
   if (action === "auth") {
     const email = (e.parameter.email || "").toLowerCase().trim();
     const staff = getStaffList();
     const match = staff.filter(function(s) { return s.email.toLowerCase().trim() === email; })[0];
 
     if (!match) {
-      // Redirect back with error
       return HtmlService.createHtmlOutput(
-        '<html><body><script>window.location.href = "' + FORM_URL + '?error=not_found";<\/script></body></html>'
-      ).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+        '<html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head>' +
+        '<body style="font-family:sans-serif;text-align:center;padding:40px 20px;">' +
+        '<h2 style="color:#C62828;">Email not recognised</h2>' +
+        '<p>Check the address or contact Paul to be added.</p>' +
+        '<a href="' + FORM_URL + '" style="display:inline-block;margin-top:20px;padding:12px 24px;background:#6B3FA0;color:white;text-decoration:none;border-radius:8px;font-weight:bold;">Try Again</a>' +
+        '</body></html>'
+      ).setTitle("Timesheet — Not Found")
+       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
     }
 
     // Calculate current week ending (next Thursday)
@@ -149,8 +155,15 @@ function doGet(e) {
       "&token=" + token + "&we=" + weStr + "&email=" + encodeURIComponent(email);
 
     return HtmlService.createHtmlOutput(
-      '<html><body><script>window.location.href = "' + redirect + '";<\/script></body></html>'
-    ).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+      '<html><head><meta name="viewport" content="width=device-width,initial-scale=1">' +
+      '<script>window.location.href = "' + redirect + '";<\/script></head>' +
+      '<body style="font-family:sans-serif;text-align:center;padding:40px 20px;">' +
+      '<h2 style="color:#4CAF50;">Welcome, ' + match.name + '</h2>' +
+      '<p>Redirecting to your timesheet...</p>' +
+      '<a href="' + redirect + '" style="display:inline-block;margin-top:20px;padding:12px 24px;background:#6B3FA0;color:white;text-decoration:none;border-radius:8px;font-weight:bold;">Tap here if not redirected</a>' +
+      '</body></html>'
+    ).setTitle("Timesheet — " + match.name)
+     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
 
   // Legacy: return staff names via postMessage (fallback)
