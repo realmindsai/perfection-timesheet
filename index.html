@@ -411,17 +411,28 @@
 
     <!-- ── FORM VIEW ── -->
     <div id="formView">
-      <div class="section">
+      <!-- Email auth gate: shown until authenticated -->
+      <div class="section" id="emailAuthSection">
         <div class="field">
-          <label for="staffName">Your Name</label>
-          <select id="staffName" required style="display:none;" onchange="onStaffOrWeekChange()">
-            <option value="">Loading names...</option>
-          </select>
-          <input type="text" id="staffNameFallback" placeholder="Type your name"
-                 style="width:100%;padding:10px 12px;border:1.5px solid #DDD;border-radius:6px;font-size:16px;"
-                 onchange="onStaffOrWeekChange()">
-          <p id="nameError" style="display:none;color:#888;font-size:12px;margin-top:4px;">Staff list loading slowly — just type your name.</p>
+          <label for="authEmail">Your Email Address</label>
+          <input type="email" id="authEmail" placeholder="you@example.com"
+                 style="width:100%;padding:10px 12px;border:1.5px solid #DDD;border-radius:6px;font-size:16px;">
+          <p id="authError" style="display:none;color:#C62828;font-size:13px;margin-top:6px;"></p>
         </div>
+        <button class="submit-btn" onclick="startAuth()" id="authBtn">Start Timesheet</button>
+      </div>
+
+      <!-- Authenticated name display: shown after email validated -->
+      <div class="section" id="nameSection" style="display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-size:12px;color:#666;text-transform:uppercase;">Logged in as</div>
+            <div style="font-size:18px;font-weight:600;color:var(--purple);" id="staffNameDisplay"></div>
+          </div>
+          <button onclick="logout()" style="background:none;border:1.5px solid #DDD;border-radius:6px;padding:6px 12px;font-size:13px;color:#666;cursor:pointer;">Change</button>
+        </div>
+        <input type="hidden" id="staffName" value="">
+        <input type="hidden" id="authToken" value="">
       </div>
 
       <div class="section-title">Week 1</div>
@@ -1135,7 +1146,7 @@
     var staffName = getStaffName();
     var weekEnding = document.getElementById("weekEnding").value;
 
-    if (!staffName) { showError("Please select or enter your name."); return false; }
+    if (!staffName) { showError("Please enter your email to get started."); return false; }
     if (!weekEnding) { showError("Please select the week ending date."); return false; }
 
     // Validate week 1 days
@@ -1340,9 +1351,13 @@
     var staffName = getStaffName();
     var weekEnding = document.getElementById("weekEnding").value;
 
+    var token = document.getElementById("authToken").value;
+
     var payload = {
       version: 2,
       staffName: staffName,
+      token: token || "",
+      weekEnding: weekEnding,
       weeks: [buildWeekPayload("w1", weekEnding)],
       correction: null,
       unavailableDays: document.getElementById("unavailableDays").value.trim() || "",
@@ -1492,7 +1507,7 @@
     document.getElementById("successView").style.display = "none";
     document.getElementById("previewView").style.display = "none";
     document.getElementById("warningView").style.display = "none";
-    resetStaffName();
+    // Keep the authenticated name — don't reset auth on "Submit Another"
     document.getElementById("weekEnding").value = "";
     document.getElementById("unavailableDays").value = "";
     document.getElementById("generalNotes").value = "";
@@ -1527,84 +1542,97 @@
     window.scrollTo(0, 0);
   }
 
-  // ── Staff name helpers ──
+  // ── Email auth ──
 
-  var staffNamesLoaded = false;
+  var authenticated = false;
 
   function getStaffName() {
-    if (staffNamesLoaded) {
-      return document.getElementById("staffName").value;
-    }
-    return document.getElementById("staffNameFallback").value.trim();
+    return document.getElementById("staffName").value;
   }
 
   function resetStaffName() {
-    if (staffNamesLoaded) {
-      document.getElementById("staffName").selectedIndex = 0;
-    } else {
-      document.getElementById("staffNameFallback").value = "";
+    document.getElementById("staffName").value = "";
+    document.getElementById("staffNameDisplay").textContent = "";
+    document.getElementById("authToken").value = "";
+    authenticated = false;
+  }
+
+  function startAuth() {
+    var email = document.getElementById("authEmail").value.trim();
+    if (!email) {
+      document.getElementById("authError").textContent = "Please enter your email address.";
+      document.getElementById("authError").style.display = "block";
+      return;
     }
+    // Redirect to Apps Script for validation — it will redirect back with name + token
+    var btn = document.getElementById("authBtn");
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Checking...';
+    window.location.href = SCRIPT_URL + "?action=auth&email=" + encodeURIComponent(email);
   }
 
-  // Receives staff names from hidden iframe via postMessage
-  function onStaffNamesLoaded(data) {
-    if (!data.success || !data.names || data.names.length === 0) return;
-
-    var select = document.getElementById("staffName");
-    select.innerHTML = '<option value="">Select your name</option>';
-    data.names.forEach(function(name) {
-      var opt = document.createElement("option");
-      opt.value = name;
-      opt.textContent = name;
-      select.appendChild(opt);
-    });
-
-    // Show dropdown, hide text input
-    select.style.display = "";
-    document.getElementById("staffNameFallback").style.display = "none";
-    staffNamesLoaded = true;
+  function logout() {
+    // Clear auth and show email input
+    resetStaffName();
+    document.getElementById("emailAuthSection").style.display = "block";
+    document.getElementById("nameSection").style.display = "none";
+    document.getElementById("authEmail").value = "";
+    // Clear URL params
+    window.history.replaceState({}, "", window.location.pathname);
   }
 
-  function loadStaffNames() {
-    // Listen for postMessage from the iframe (cross-origin safe)
-    window.addEventListener("message", function(event) {
-      if (event.data && event.data.success && event.data.names) {
-        onStaffNamesLoaded(event.data);
-      }
-    });
+  function checkAuthFromUrl() {
+    var params = new URLSearchParams(window.location.search);
 
-    // Load names via hidden iframe — handles Apps Script redirect chain on mobile
-    var iframe = document.createElement("iframe");
-    iframe.style.display = "none";
-    iframe.src = SCRIPT_URL + "?action=getNames";
-    document.body.appendChild(iframe);
+    // Check for auth error
+    if (params.get("error") === "not_found") {
+      document.getElementById("authError").textContent = "Email not recognised. Check with Paul if you need to be added.";
+      document.getElementById("authError").style.display = "block";
+      window.history.replaceState({}, "", window.location.pathname);
+      return;
+    }
 
-    // Timeout fallback — if names don't arrive in 15 seconds, show text input
-    setTimeout(function() {
-      if (!staffNamesLoaded) {
-        document.getElementById("staffName").style.display = "none";
-        document.getElementById("staffNameFallback").style.display = "";
-        document.getElementById("nameError").style.display = "block";
+    // Check for successful auth
+    var name = params.get("name");
+    var token = params.get("token");
+    var we = params.get("we");
+
+    if (name && token) {
+      authenticated = true;
+      document.getElementById("staffName").value = name;
+      document.getElementById("staffNameDisplay").textContent = name;
+      document.getElementById("authToken").value = token;
+      document.getElementById("emailAuthSection").style.display = "none";
+      document.getElementById("nameSection").style.display = "block";
+
+      // Set week ending from URL
+      if (we) {
+        document.getElementById("weekEnding").value = we;
       }
-    }, 15000);
+
+      // Try to load draft
+      onStaffOrWeekChange();
+    }
   }
 
   // ── Init ──
   buildDayCards("w1", "w1_dayCards");
   buildDayCards("w2", "w2_dayCards");
   buildCorrectionPickers();
-  loadStaffNames();
 
   // Default week ending to next Thursday (or today if already Thursday)
   (function() {
     var today = new Date();
     var dow = today.getDay(); // 0=Sun, 4=Thu
     var daysUntilThu = (4 - dow + 7) % 7;
-    if (daysUntilThu === 0) daysUntilThu = 0; // Today is Thursday — use today
+    if (daysUntilThu === 0) daysUntilThu = 0;
     var nextThu = new Date(today);
     nextThu.setDate(today.getDate() + daysUntilThu);
     document.getElementById("weekEnding").value = nextThu.toISOString().split("T")[0];
   })();
+
+  // Check if returning from email auth redirect
+  checkAuthFromUrl();
 </script>
 </body>
 </html>

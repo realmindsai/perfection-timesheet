@@ -6,10 +6,14 @@
  * 1. Create a Google Sheet
  * 2. Extensions → Apps Script → paste this into Code.gs
  * 3. Run initialSetup() once
- * 4. Add staff names to the "Staff List" tab
+ * 4. Add staff to the "Staff List" tab (columns: Name, Email)
  * 5. Deploy → New deployment → Web app → Execute as "Me" → Who has access "Anyone" → Deploy
- * 6. Copy the deployment URL and paste it into the form's SCRIPT_URL
+ * 6. Update FORM_URL below with your GitHub Pages URL
+ * 7. Each pay period: Timesheets menu → Send Timesheet Links
  */
+
+const FORM_URL = "https://realmindsai.github.io/perfection-timesheet/";
+const TOKEN_SECRET = "perfection-services-2026";
 
 /**
  * Run this once to grant email permission. Select this function and click Run.
@@ -18,6 +22,90 @@ function authoriseEmail() {
   MailApp.getRemainingDailyQuota();
   SpreadsheetApp.getActiveSpreadsheet();
   Logger.log("Permissions OK — email quota remaining: " + MailApp.getRemainingDailyQuota());
+}
+
+/**
+ * Adds a "Timesheets" menu to the spreadsheet
+ */
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu("Timesheets")
+    .addItem("Send timesheet links", "sendTimesheetLinks")
+    .addToUi();
+}
+
+/**
+ * Generates a token for a staff member + pay period
+ * Token = first 16 chars of SHA256(secret + email + weekEnding)
+ */
+function generateToken(email, weekEnding) {
+  var raw = TOKEN_SECRET + "|" + email.toLowerCase().trim() + "|" + weekEnding;
+  var hash = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, raw);
+  return hash.map(function(b) { return ("0" + (b & 0xFF).toString(16)).slice(-2); }).join("").substring(0, 16);
+}
+
+/**
+ * Validates a token and returns the staff name, or null if invalid
+ */
+function validateToken(token, weekEnding) {
+  var staff = getStaffList();
+  for (var i = 0; i < staff.length; i++) {
+    var expected = generateToken(staff[i].email, weekEnding);
+    if (expected === token) {
+      return staff[i].name;
+    }
+  }
+  return null;
+}
+
+/**
+ * Returns staff names and emails from the Staff List tab
+ */
+function getStaffList() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(STAFF_SHEET);
+  if (!sheet) return [];
+
+  var data = sheet.getRange("A2:B").getValues();
+  return data.filter(function(row) { return row[0] !== "" && row[1] !== ""; })
+    .map(function(row) { return { name: row[0], email: row[1] }; });
+}
+
+/**
+ * Sends timesheet links to all staff for the current pay period.
+ * Called from the Timesheets menu. Optional — staff can also just open the URL directly.
+ */
+function sendTimesheetLinks() {
+  var staff = getStaffList();
+
+  if (staff.length === 0) {
+    SpreadsheetApp.getUi().alert("No staff found. Add names and emails to the Staff List tab (columns A and B).");
+    return;
+  }
+
+  var sent = [];
+  var failed = [];
+
+  for (var i = 0; i < staff.length; i++) {
+    try {
+      MailApp.sendEmail({
+        to: staff[i].email,
+        subject: "Submit your timesheet",
+        htmlBody: "<p>Hi " + staff[i].name + ",</p>" +
+          "<p>Time to enter your hours:</p>" +
+          "<p><a href='" + FORM_URL + "' style='display:inline-block;padding:12px 24px;background:#6B3FA0;color:white;text-decoration:none;border-radius:6px;font-weight:bold;'>Enter My Hours</a></p>" +
+          "<p>You can fill in hours each day and submit at the end of the period.</p>" +
+          "<p style='color:#999;font-size:12px;'>Perfection Services Timesheets</p>"
+      });
+      sent.push(staff[i].name);
+    } catch (err) {
+      failed.push(staff[i].name + " (" + err.message + ")");
+    }
+  }
+
+  var msg = "Links sent to: " + sent.join(", ");
+  if (failed.length > 0) msg += "\n\nFailed: " + failed.join(", ");
+  SpreadsheetApp.getUi().alert(msg);
 }
 
 const SHEET_NAME = "Timesheet Responses";
@@ -30,18 +118,45 @@ const DAYS = ["fri", "sat", "sun", "mon", "tue", "wed", "thu"];
 const DAYS_TITLE = ["Fri", "Sat", "Sun", "Mon", "Tue", "Wed", "Thu"];
 
 /**
- * Handles GET requests — returns staff names as JSON
+ * Handles GET requests — email auth flow + legacy name loading
  */
 function doGet(e) {
-  const action = (e && e.parameter && e.parameter.action) || "getNames";
-  const callback = (e && e.parameter && e.parameter.callback) || "";
+  const action = (e && e.parameter && e.parameter.action) || "";
 
+  // Email authentication: look up email, redirect back with token + name
+  if (action === "auth") {
+    const email = (e.parameter.email || "").toLowerCase().trim();
+    const staff = getStaffList();
+    const match = staff.filter(function(s) { return s.email.toLowerCase().trim() === email; })[0];
+
+    if (!match) {
+      // Redirect back with error
+      return HtmlService.createHtmlOutput(
+        '<html><body><script>window.location.href = "' + FORM_URL + '?error=not_found";<\/script></body></html>'
+      ).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    }
+
+    // Calculate current week ending (next Thursday)
+    var today = new Date();
+    var dow = today.getDay();
+    var daysUntilThu = (4 - dow + 7) % 7;
+    var weekEnding = new Date(today);
+    weekEnding.setDate(today.getDate() + daysUntilThu);
+    var weStr = Utilities.formatDate(weekEnding, Session.getScriptTimeZone(), "yyyy-MM-dd");
+
+    var token = generateToken(email, weStr);
+    var redirect = FORM_URL + "?name=" + encodeURIComponent(match.name) +
+      "&token=" + token + "&we=" + weStr + "&email=" + encodeURIComponent(email);
+
+    return HtmlService.createHtmlOutput(
+      '<html><body><script>window.location.href = "' + redirect + '";<\/script></body></html>'
+    ).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+
+  // Legacy: return staff names via postMessage (fallback)
   if (action === "getNames") {
     const names = getStaffNames();
     const json = JSON.stringify({ success: true, names: names });
-
-    // Return HTML page that posts names to parent window via postMessage
-    // This works on mobile because iframes handle the Apps Script redirect chain correctly
     const html = '<html><body><script>parent.postMessage(' + json + ', "*");<\/script></body></html>';
     return HtmlService.createHtmlOutput(html)
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
@@ -67,6 +182,15 @@ function doPost(e) {
       throw new Error("No data received");
     }
 
+    // Validate token if provided (prevents name tampering)
+    if (formData.token && formData.weekEnding) {
+      var validName = validateToken(formData.token, formData.weekEnding);
+      if (!validName) {
+        throw new Error("Invalid or expired token. Please re-enter your email.");
+      }
+      formData.staffName = validName;
+    }
+
     let result;
     if (formData.version === 2) {
       result = processV2(formData);
@@ -86,7 +210,7 @@ function doPost(e) {
 }
 
 /**
- * Returns staff names from the Staff List tab
+ * Returns staff names from the Staff List tab (legacy fallback)
  */
 function getStaffNames() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -94,9 +218,10 @@ function getStaffNames() {
 
   if (!sheet) {
     sheet = ss.insertSheet(STAFF_SHEET);
-    sheet.getRange("A1").setValue("Staff Names").setFontWeight("bold");
-    sheet.getRange("A2").setValue("Add staff names here");
+    sheet.getRange("A1").setValue("Name").setFontWeight("bold");
+    sheet.getRange("B1").setValue("Email").setFontWeight("bold");
     sheet.setColumnWidth(1, 200);
+    sheet.setColumnWidth(2, 250);
   }
 
   const data = sheet.getRange("A2:A").getValues();
