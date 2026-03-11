@@ -1579,14 +1579,14 @@
     iframe.src = SCRIPT_URL + "?action=getNames";
     document.body.appendChild(iframe);
 
-    // Timeout fallback — if names don't arrive in 10 seconds, show text input
+    // Timeout fallback — if names don't arrive in 15 seconds, show text input
     setTimeout(function() {
       if (!staffNamesLoaded) {
         document.getElementById("staffName").style.display = "none";
         document.getElementById("staffNameFallback").style.display = "";
         document.getElementById("nameError").style.display = "block";
       }
-    }, 10000);
+    }, 15000);
   }
 
   // ── Init ──
